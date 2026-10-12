@@ -98,7 +98,7 @@ nombres se configuran en `alerta-quito-interfaz/src/app/core/marca.ts`:
 
 | Archivo | Uso |
 |---|---|
-| `imagen1.jpg` … `imagen5.jpg` | Fotos que rotan de fondo en el login y el registro. **Las que no existan se omiten solas**, así que basta con copiar el archivo con ese nombre. Recomendado: 1920 px de ancho o más. |
+| `imagen1.jpg` … `imagen5.jpg` | Fotos que rotan de fondo en el login y el registro. **Las que no existan se omiten solas.** Para cambiarlas: ponga los originales (`.png`, `.jpg` o `.webp`, 16:9 y de 1920 px de ancho o más; el sujeto hacia la derecha porque el panel del login tapa el tercio izquierdo) en `alerta-quito-interfaz/fotos-originales/` con esos nombres y ejecute `python scripts/preparar_fotos.py`, que los optimiza y los deja en `public/images/`. |
 | `slide1..4.svg` | Ilustraciones de respaldo: solo se usan si no existe ninguna foto |
 | `logo.svg` (o `.png`) | Logo vertical del panel de acceso (fondo claro) |
 | `logo_horizontal.svg` | Logo blanco de la cabecera azul |
