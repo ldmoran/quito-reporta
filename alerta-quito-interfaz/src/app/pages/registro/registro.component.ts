@@ -3,12 +3,14 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { mensajeDeError } from '../../core/mensajes';
+import { claveSegura } from '../../core/validadores';
 import { FondoAccesoComponent } from '../../shared/fondo-acceso.component';
+import { RequisitosClaveComponent } from '../../shared/requisitos-clave.component';
 
 @Component({
   selector: 'app-registro',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, FondoAccesoComponent],
+  imports: [ReactiveFormsModule, RouterLink, FondoAccesoComponent, RequisitosClaveComponent],
   template: `
     <app-fondo-acceso>
       <h1>Crear cuenta</h1>
@@ -51,8 +53,9 @@ import { FondoAccesoComponent } from '../../shared/fondo-acceso.component';
         <div class="input-group login-input">
           <span class="input-group-text"><i class="fa fa-key" aria-hidden="true"></i></span>
           <label for="password" class="visually-hidden">Contraseña</label>
-          <input id="password" type="password" class="form-control" placeholder="Contraseña (mínimo 8 caracteres)" formControlName="password" autocomplete="new-password" />
+          <input id="password" type="password" class="form-control" placeholder="Contraseña" formControlName="password" autocomplete="new-password" />
         </div>
+        <app-requisitos-clave [valor]="form.controls.password.value" [usuario]="form.controls.usuario.value" />
 
         <button type="submit" class="btn btn-primary login-btn" [disabled]="form.invalid || cargando()">
           <i class="fa fa-user-plus me-2" aria-hidden="true"></i>
@@ -75,12 +78,14 @@ export class RegistroComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
+  private readonly usuarioCtl = this.fb.nonNullable.control('', [Validators.required, Validators.pattern(/^[A-Za-z0-9._-]{4,50}$/)]);
+
   readonly form = this.fb.nonNullable.group({
     nombreCompleto: ['', [Validators.required, Validators.maxLength(150)]],
     cedula: ['', [Validators.required, Validators.pattern(/^\d{10,13}$/)]],
     correo: ['', [Validators.required, Validators.email]],
-    usuario: ['', [Validators.required, Validators.pattern(/^[A-Za-z0-9._-]{4,50}$/)]],
-    password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(72)]],
+    usuario: this.usuarioCtl,
+    password: ['', [Validators.required, claveSegura(() => this.usuarioCtl.value)]],
   });
   readonly error = signal('');
   readonly cargando = signal(false);

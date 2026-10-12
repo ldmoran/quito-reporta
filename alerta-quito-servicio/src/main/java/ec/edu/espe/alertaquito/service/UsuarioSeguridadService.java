@@ -7,6 +7,7 @@ import ec.edu.espe.alertaquito.exception.RecursoNoEncontradoException;
 import ec.edu.espe.alertaquito.exception.ReglaNegocioException;
 import ec.edu.espe.alertaquito.repository.seguridad.PerfilRepository;
 import ec.edu.espe.alertaquito.repository.seguridad.UsuarioSeguridadRepository;
+import ec.edu.espe.alertaquito.utils.PoliticaPassword;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +40,7 @@ public class UsuarioSeguridadService {
         if (usuarios.existsByCorreo(correo)) {
             throw new ReglaNegocioException("El correo '" + correo + "' ya esta registrado.");
         }
+        PoliticaPassword.exigir(password, login);
         Perfil perfil = perfiles.findByAplicacionCodigoAndCodigo(AuthServiceImpl.APLICACION, codigoPerfil)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Perfil inexistente: " + codigoPerfil));
 
@@ -81,6 +83,7 @@ public class UsuarioSeguridadService {
         if (!encoder.matches(actual, u.getPasswordHash())) {
             throw new ReglaNegocioException("La contraseña actual no es correcta.");
         }
+        PoliticaPassword.exigir(nueva, u.getUsuario());
         if (actual.equals(nueva)) {
             throw new ReglaNegocioException("La contraseña nueva debe ser distinta de la actual.");
         }

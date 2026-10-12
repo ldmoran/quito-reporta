@@ -266,6 +266,47 @@ class FlujoReportesIT {
     }
 
     @Test
+    void laPoliticaDeContrasenasSeAplicaEnRegistroYEnCambioDeClave() throws Exception {
+        String sufijo = UUID.randomUUID().toString().substring(0, 6);
+        String[] debiles = {"corta1*", "sinmayuscula1*", "SINMINUSCULA1*", "SinNumeros*", "SinSimbolo123", "Con Espacio1*"};
+
+        for (String clave : debiles) {
+            String cuerpo = "{\"nombreCompleto\":\"Persona Debil\",\"cedula\":\"1712345678\",\"correo\":\"d" + sufijo
+                    + "@x.ec\",\"usuario\":\"debil" + sufijo + "\",\"password\":\"" + clave + "\"}";
+            mvc.perform(post("/api/auth/registro").contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.mensaje").value(org.hamcrest.Matchers.containsString("contraseña")));
+        }
+
+        // El usuario no puede estar dentro de la clave.
+        String conUsuario = "{\"nombreCompleto\":\"Persona\",\"cedula\":\"1712345678\",\"correo\":\"u" + sufijo
+                + "@x.ec\",\"usuario\":\"carlos" + sufijo + "\",\"password\":\"Carlos" + sufijo + "2026*\"}";
+        mvc.perform(post("/api/auth/registro").contentType(MediaType.APPLICATION_JSON).content(conUsuario))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value(org.hamcrest.Matchers.containsString("nombre de usuario")));
+
+        // Al cambiar la clave rige la misma politica.
+        String usuario = registrarCiudadano("pol" + sufijo);
+        String tk = token(usuario, "Clave1234*");
+        cambiarPassword(tk, "Clave1234*", "debil").andExpect(status().isBadRequest());
+        cambiarPassword(tk, "Clave1234*", "SinSimbolo123").andExpect(status().isBadRequest());
+        cambiarPassword(tk, "Clave1234*", "Otra.Clave2026").andExpect(status().isOk());
+    }
+
+    @Test
+    void elAdministradorNoPuedeAsignarUnaClaveDebilAUnFuncionario() throws Exception {
+        String admin = token("admin", "Admin123*");
+        String usuario = "dbl" + UUID.randomUUID().toString().substring(0, 6);
+        String cuerpo = "{\"nombreCompleto\":\"Funcionario\",\"cedula\":\"1798765434\",\"correo\":\"" + usuario
+                + "@quito.ec\",\"usuario\":\"" + usuario + "\",\"password\":\"12345678\",\"idEntidad\":1}";
+
+        mvc.perform(post("/api/admin/funcionarios").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isBadRequest());
+        login(usuario, "12345678").andExpect(status().isUnauthorized());   // no se creo nada
+    }
+
+    @Test
     void tresClavesMalasBloqueanAlUsuarioYSoloElAdministradorLoDesbloquea() throws Exception {
         String usuario = registrarCiudadano("bloq" + UUID.randomUUID().toString().substring(0, 6));
 

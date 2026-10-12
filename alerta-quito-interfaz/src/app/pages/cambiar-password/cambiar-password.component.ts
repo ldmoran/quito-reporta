@@ -3,6 +3,8 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Va
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { mensajeDeError } from '../../core/mensajes';
+import { claveSegura } from '../../core/validadores';
+import { RequisitosClaveComponent } from '../../shared/requisitos-clave.component';
 
 function coinciden(control: AbstractControl): ValidationErrors | null {
   const nueva = control.get('passwordNueva')?.value;
@@ -13,13 +15,13 @@ function coinciden(control: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-cambiar-password',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, RequisitosClaveComponent],
   template: `
     <div class="dashboard-section" style="max-width: 560px">
       <div class="section-heading">
         <div>
           <h4>Cambiar contraseña</h4>
-          <p>Elija una contraseña de al menos 8 caracteres.</p>
+          <p>Elija una contraseña nueva que cumpla los requisitos.</p>
         </div>
       </div>
 
@@ -39,6 +41,7 @@ function coinciden(control: AbstractControl): ValidationErrors | null {
           <label class="form-label" for="nueva">Contraseña nueva</label>
           <input id="nueva" type="password" class="form-control" formControlName="passwordNueva" autocomplete="new-password" />
         </div>
+        <app-requisitos-clave [valor]="form.controls.passwordNueva.value" [usuario]="auth.sesion()?.usuario ?? ''" />
         <div class="mb-3">
           <label class="form-label" for="repetir">Repita la contraseña nueva</label>
           <input id="repetir" type="password" class="form-control" formControlName="repetir" autocomplete="new-password" />
@@ -66,7 +69,7 @@ export class CambiarPasswordComponent {
   readonly form = this.fb.nonNullable.group(
     {
       passwordActual: ['', Validators.required],
-      passwordNueva: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(72)]],
+      passwordNueva: ['', [Validators.required, claveSegura(() => this.auth.sesion()?.usuario ?? '')]],
       repetir: ['', Validators.required],
     },
     { validators: coinciden },

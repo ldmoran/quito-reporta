@@ -92,6 +92,11 @@ Se crean en `reset_seguridad.sql` (**solo desarrollo**, cambiar antes de producc
 
 ## Flujo de usuarios y contraseñas
 
+**Política de contraseñas** (se valida en el API y se muestra en vivo en las pantallas de registro y cambio de clave):
+entre 8 y 72 caracteres, al menos una mayúscula, una minúscula, un número y un símbolo, sin espacios y sin contener el
+nombre de usuario. Aplica al autoregistro, al cambio de clave y a cualquier clave que asigne el administrador; las
+temporales que genera el sistema siempre la cumplen (`PoliticaPassword`, `ClaveSegura`, `core/validadores.ts`).
+
 * **Ciudadano:** se registra solo (`/registro`).
 * **Funcionario:** lo crea el **administrador** (menú *Administración*) indicando su entidad. El sistema genera una
   **contraseña temporal**, la envía por correo y la muestra una vez al administrador. Mientras no la cambie, el API solo le
