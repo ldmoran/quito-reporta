@@ -48,7 +48,7 @@ import { FondoAccesoComponent } from '../../shared/fondo-acceso.component';
         </button>
 
         <div class="login-help">
-          ¿Olvidó su contraseña?<br />
+          <a routerLink="/olvide-password">¿Olvidó su contraseña?</a><br />
           {{ ayuda }}<br />
           <a routerLink="/registro">Crear cuenta de ciudadano</a>
         </div>

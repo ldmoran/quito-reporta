@@ -7,6 +7,14 @@ import {
   EstadoReporte,
   Estadisticas,
   CredencialesTemporales,
+  EdicionFuncionario,
+  EntidadAdmin,
+  FilaHistorial,
+  FiltroAuditoria,
+  FormEntidad,
+  FormTipoIncidente,
+  PaginaAuditoria,
+  TipoIncidenteAdmin,
   Funcionario,
   FuncionarioCreado,
   NuevoFuncionario,
@@ -70,6 +78,62 @@ export class ApiService {
 
   registrarFuncionario(datos: NuevoFuncionario): Observable<FuncionarioCreado> {
     return this.http.post<FuncionarioCreado>(`${this.base}/admin/funcionarios`, datos);
+  }
+
+  actualizarFuncionario(id: number, datos: EdicionFuncionario): Observable<Funcionario> {
+    return this.http.put<Funcionario>(`${this.base}/admin/funcionarios/${id}`, datos);
+  }
+
+  /** activo = false: dar de baja; activo = true: volver a dar de alta. */
+  estadoFuncionario(id: number, activo: boolean): Observable<Funcionario> {
+    return this.http.patch<Funcionario>(`${this.base}/admin/funcionarios/${id}/estado`, { activo });
+  }
+
+  // --- Mantenimiento: entidades y tipos de incidente
+  entidadesAdmin(): Observable<EntidadAdmin[]> {
+    return this.http.get<EntidadAdmin[]>(`${this.base}/admin/mantenimiento/entidades`);
+  }
+
+  crearEntidad(datos: FormEntidad): Observable<EntidadAdmin> {
+    return this.http.post<EntidadAdmin>(`${this.base}/admin/mantenimiento/entidades`, datos);
+  }
+
+  actualizarEntidad(id: number, datos: FormEntidad): Observable<EntidadAdmin> {
+    return this.http.put<EntidadAdmin>(`${this.base}/admin/mantenimiento/entidades/${id}`, datos);
+  }
+
+  estadoEntidad(id: number, activo: boolean): Observable<EntidadAdmin> {
+    return this.http.patch<EntidadAdmin>(`${this.base}/admin/mantenimiento/entidades/${id}/estado`, { activo });
+  }
+
+  tiposAdmin(): Observable<TipoIncidenteAdmin[]> {
+    return this.http.get<TipoIncidenteAdmin[]>(`${this.base}/admin/mantenimiento/tipos-incidente`);
+  }
+
+  crearTipo(datos: FormTipoIncidente): Observable<TipoIncidenteAdmin> {
+    return this.http.post<TipoIncidenteAdmin>(`${this.base}/admin/mantenimiento/tipos-incidente`, datos);
+  }
+
+  actualizarTipo(id: number, datos: FormTipoIncidente): Observable<TipoIncidenteAdmin> {
+    return this.http.put<TipoIncidenteAdmin>(`${this.base}/admin/mantenimiento/tipos-incidente/${id}`, datos);
+  }
+
+  estadoTipo(id: number, activo: boolean): Observable<TipoIncidenteAdmin> {
+    return this.http.patch<TipoIncidenteAdmin>(`${this.base}/admin/mantenimiento/tipos-incidente/${id}/estado`, { activo });
+  }
+
+  // --- Auditoria
+  auditoria(f: FiltroAuditoria): Observable<PaginaAuditoria> {
+    let params = new HttpParams().set('pagina', f.pagina);
+    if (f.tabla) params = params.set('tabla', f.tabla);
+    if (f.accion) params = params.set('accion', f.accion);
+    if (f.usuario.trim()) params = params.set('usuario', f.usuario.trim());
+    return this.http.get<PaginaAuditoria>(`${this.base}/admin/auditoria`, { params });
+  }
+
+  historialAuditoria(origen: string, tabla: string, idRegistro: string): Observable<FilaHistorial[]> {
+    const params = new HttpParams().set('origen', origen).set('tabla', tabla).set('idRegistro', idRegistro);
+    return this.http.get<FilaHistorial[]>(`${this.base}/admin/auditoria/historial`, { params });
   }
 
   darDeBajaFuncionario(id: number): Observable<void> {

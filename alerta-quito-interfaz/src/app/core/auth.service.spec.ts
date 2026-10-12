@@ -52,7 +52,7 @@ describe('AuthService', () => {
   it('la pantalla de inicio depende del perfil', () => {
     auth.login('x', 'y').subscribe();
     http.expectOne('/api/auth/login').flush(respuesta(['ADMINI']));
-    expect(auth.rutaInicio()).toBe('/admin');
+    expect(auth.rutaInicio()).toBe('/admin/estadisticas');
 
     auth.login('x', 'y').subscribe();
     http.expectOne('/api/auth/login').flush(respuesta(['FUNCIO']));
@@ -107,5 +107,23 @@ describe('AuthService', () => {
     TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()] });
 
     expect(TestBed.inject(AuthService).autenticado()).toBeFalse();
+  });
+
+  it('olvidePassword pide el enlace sin necesitar sesión', () => {
+    auth.olvidePassword('ana.perez').subscribe((r) => expect(r.mensaje).toContain('correo'));
+
+    const req = http.expectOne('/api/auth/olvide-password');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ identificador: 'ana.perez' });
+    expect(req.request.headers.has('Authorization')).toBeFalse();
+    req.flush({ mensaje: 'Si la cuenta existe, enviamos un correo.' });
+  });
+
+  it('restablecerPassword envía el token del enlace y la clave nueva', () => {
+    auth.restablecerPassword('tok123', 'NuevaClave2026*').subscribe();
+
+    const req = http.expectOne('/api/auth/restablecer-password');
+    expect(req.request.body).toEqual({ token: 'tok123', passwordNueva: 'NuevaClave2026*' });
+    req.flush({ mensaje: 'ok' });
   });
 });

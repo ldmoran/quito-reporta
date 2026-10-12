@@ -54,17 +54,36 @@ describe('AppComponent', () => {
     expect(opciones).not.toContain('Administración');
   });
 
-  it('el administrador ve la opción Administración y la cabecera con su nombre', () => {
+  it('el administrador ve Mantenimiento, Usuarios y Auditoría y la cabecera con su nombre', () => {
     guardarSesion(['ADMINI']);
     configurar();
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const html = fixture.nativeElement as HTMLElement;
+    const submenu = Array.from(html.querySelectorAll('.submenu-link span')).map((x) => x.textContent?.trim());
 
-    expect(opcionesMenu(html)).toContain('Administración');
+    expect(opcionesMenu(html)).toEqual(jasmine.arrayContaining(['Estadísticas', 'Mantenimiento', 'Usuarios', 'Auditoría']));
+    expect(submenu).toEqual(['Entidades', 'Tipos de incidente', 'Funcionarios']);
     expect(opcionesMenu(html)).not.toContain('Nuevo reporte');
     expect(html.querySelector('.top-navbar')?.textContent).toContain('Persona Prueba');
     expect(html.querySelector('.top-navbar')?.textContent).toContain('Administrador');
+  });
+
+  it('el grupo Mantenimiento se puede plegar y desplegar', () => {
+    guardarSesion(['ADMINI']);
+    configurar();
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const html = fixture.nativeElement as HTMLElement;
+    const boton = html.querySelector('.sidebar-toggle') as HTMLButtonElement;
+
+    boton.click();
+    fixture.detectChanges();
+    expect(html.querySelectorAll('.submenu-link').length).toBe(0);
+
+    boton.click();
+    fixture.detectChanges();
+    expect(html.querySelectorAll('.submenu-link').length).toBe(3);
   });
 
   it('con clave temporal el menú solo ofrece cambiar la contraseña', () => {

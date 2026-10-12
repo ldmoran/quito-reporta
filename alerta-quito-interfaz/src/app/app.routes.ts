@@ -1,6 +1,13 @@
 import { Routes } from '@angular/router';
 import { perfilGuard, sesionGuard, soloInvitadoGuard } from './core/auth.guard';
-import { AdminComponent } from './pages/admin/admin.component';
+import { AuditoriaComponent } from './pages/admin/auditoria.component';
+import { EntidadesComponent } from './pages/admin/entidades.component';
+import { EstadisticasComponent } from './pages/admin/estadisticas.component';
+import { FuncionariosComponent } from './pages/admin/funcionarios.component';
+import { TiposIncidenteComponent } from './pages/admin/tipos-incidente.component';
+import { UsuariosComponent } from './pages/admin/usuarios.component';
+import { OlvidePasswordComponent } from './pages/olvide-password/olvide-password.component';
+import { RestablecerPasswordComponent } from './pages/restablecer-password/restablecer-password.component';
 import { BandejaComponent } from './pages/bandeja/bandeja.component';
 import { CambiarPasswordComponent } from './pages/cambiar-password/cambiar-password.component';
 import { LoginComponent } from './pages/login/login.component';
@@ -11,6 +18,8 @@ import { ReporteDetalleComponent } from './pages/reporte-detalle/reporte-detalle
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent, canActivate: [soloInvitadoGuard], title: 'Iniciar sesión · Alerta Quito' },
+  { path: 'olvide-password', component: OlvidePasswordComponent, canActivate: [soloInvitadoGuard], title: 'Recuperar contraseña · Alerta Quito' },
+  { path: 'restablecer', component: RestablecerPasswordComponent, title: 'Nueva contraseña · Alerta Quito' },
   { path: 'registro', component: RegistroComponent, canActivate: [soloInvitadoGuard], title: 'Crear cuenta · Alerta Quito' },
   {
     path: 'cambiar-password',
@@ -44,9 +53,16 @@ export const routes: Routes = [
   },
   {
     path: 'admin',
-    component: AdminComponent,
     canActivate: [perfilGuard('ADMINI')],
-    title: 'Administración · Alerta Quito',
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'estadisticas' },
+      { path: 'estadisticas', component: EstadisticasComponent, title: 'Estadísticas · Alerta Quito' },
+      { path: 'entidades', component: EntidadesComponent, title: 'Entidades · Alerta Quito' },
+      { path: 'tipos-incidente', component: TiposIncidenteComponent, title: 'Tipos de incidente · Alerta Quito' },
+      { path: 'funcionarios', component: FuncionariosComponent, title: 'Funcionarios · Alerta Quito' },
+      { path: 'usuarios', component: UsuariosComponent, title: 'Usuarios · Alerta Quito' },
+      { path: 'auditoria', component: AuditoriaComponent, title: 'Auditoría · Alerta Quito' },
+    ],
   },
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: '**', redirectTo: 'login' },

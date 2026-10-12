@@ -1,5 +1,5 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from './core/auth.service';
 import { MARCA } from './core/marca';
 
@@ -70,8 +70,49 @@ const CLAVE_MENU = 'alerta-quito.menu-oculto';
                   }
                   @if (auth.tienePerfil('ADMINI')) {
                     <li>
-                      <a class="sidebar-link" routerLink="/admin" routerLinkActive="active" (click)="cerrarEnMovil()">
-                        <i class="fa fa-cogs" aria-hidden="true"></i><span>Administración</span>
+                      <a class="sidebar-link" routerLink="/admin/estadisticas" routerLinkActive="active" (click)="cerrarEnMovil()">
+                        <i class="fa fa-bar-chart" aria-hidden="true"></i><span>Estadísticas</span>
+                      </a>
+                    </li>
+                    <li>
+                      <button
+                        type="button"
+                        class="sidebar-link sidebar-toggle"
+                        [class.grupo-activo]="enMantenimiento()"
+                        [attr.aria-expanded]="mantenimientoAbierto()"
+                        (click)="mantenimientoAbierto.set(!mantenimientoAbierto())"
+                      >
+                        <i class="fa fa-wrench" aria-hidden="true"></i><span>Mantenimiento</span>
+                        <i [class]="mantenimientoAbierto() ? 'fa fa-chevron-down flecha' : 'fa fa-chevron-right flecha'" aria-hidden="true"></i>
+                      </button>
+                      @if (mantenimientoAbierto()) {
+                        <ul class="submenu-list">
+                          <li>
+                            <a class="submenu-link" routerLink="/admin/entidades" routerLinkActive="active" (click)="cerrarEnMovil()">
+                              <i class="fa fa-building-o" aria-hidden="true"></i><span>Entidades</span>
+                            </a>
+                          </li>
+                          <li>
+                            <a class="submenu-link" routerLink="/admin/tipos-incidente" routerLinkActive="active" (click)="cerrarEnMovil()">
+                              <i class="fa fa-list-ul" aria-hidden="true"></i><span>Tipos de incidente</span>
+                            </a>
+                          </li>
+                          <li>
+                            <a class="submenu-link" routerLink="/admin/funcionarios" routerLinkActive="active" (click)="cerrarEnMovil()">
+                              <i class="fa fa-users" aria-hidden="true"></i><span>Funcionarios</span>
+                            </a>
+                          </li>
+                        </ul>
+                      }
+                    </li>
+                    <li>
+                      <a class="sidebar-link" routerLink="/admin/usuarios" routerLinkActive="active" (click)="cerrarEnMovil()">
+                        <i class="fa fa-key" aria-hidden="true"></i><span>Usuarios</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="sidebar-link" routerLink="/admin/auditoria" routerLinkActive="active" (click)="cerrarEnMovil()">
+                        <i class="fa fa-history" aria-hidden="true"></i><span>Auditoría</span>
                       </a>
                     </li>
                   }
@@ -99,9 +140,16 @@ const CLAVE_MENU = 'alerta-quito.menu-oculto';
 })
 export class AppComponent {
   readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   readonly marca = MARCA;
+  /** El grupo Mantenimiento arranca abierto si se está dentro de alguna de sus pantallas. */
+  readonly mantenimientoAbierto = signal(true);
   readonly menuOculto = signal(this.leerMenuOculto());
   private eraGrande = typeof window === 'undefined' || window.innerWidth >= 992;
+
+  enMantenimiento(): boolean {
+    return /^\/admin\/(entidades|tipos-incidente|funcionarios)/.test(this.router.url);
+  }
 
   etiquetaPerfil(): string {
     if (this.auth.tienePerfil('ADMINI')) return 'Administrador';

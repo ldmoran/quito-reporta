@@ -21,6 +21,8 @@ public interface ReporteRepository extends JpaRepository<Reporte, Long> {
     List<Reporte> buscarDeEntidad(@Param("idEntidad") Integer idEntidad,
                                   @Param("estados") List<EstadoReporte> estados);
 
+    long countByTipoIncidenteIdTipoIncidente(Integer idTipoIncidente);
+
     @Query("select r.estado, count(r) from Reporte r group by r.estado")
     List<Object[]> contarPorEstado();
 

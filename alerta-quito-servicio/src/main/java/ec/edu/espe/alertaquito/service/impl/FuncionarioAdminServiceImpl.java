@@ -10,6 +10,7 @@ import ec.edu.espe.alertaquito.entity.negocio.Funcionario;
 import ec.edu.espe.alertaquito.entity.negocio.Usuario;
 import ec.edu.espe.alertaquito.entity.seguridad.UsuarioSeguridad;
 import ec.edu.espe.alertaquito.exception.RecursoNoEncontradoException;
+import ec.edu.espe.alertaquito.exception.ReglaNegocioException;
 import ec.edu.espe.alertaquito.repository.negocio.EntidadRepository;
 import ec.edu.espe.alertaquito.repository.negocio.FuncionarioRepository;
 import ec.edu.espe.alertaquito.repository.negocio.UsuarioRepository;
@@ -59,8 +60,16 @@ public class FuncionarioAdminServiceImpl implements FuncionarioAdminService {
 
     @Override
     public List<FuncionarioDTO> listar() {
-        return lectura.execute(s -> funcionarios.findAllByOrderByIdFuncionarioDesc().stream()
-                .map(FuncionarioDTO::desde).toList());
+        List<Funcionario> lista = lectura.execute(s -> {
+            List<Funcionario> todos = funcionarios.findAllByOrderByIdFuncionarioDesc();
+            todos.forEach(f -> {   // inicializa lo perezoso dentro de la transaccion
+                f.getUsuario().getNombreCompleto();
+                f.getEntidad().getCodigo();
+            });
+            return todos;
+        });
+        var cedulas = seguridad.cedulasDe(lista.stream().map(f -> f.getUsuario().getIdUsuarioSeguridad()).toList());
+        return lista.stream().map(f -> FuncionarioDTO.desde(f, cedulas.get(f.getUsuario().getIdUsuarioSeguridad()))).toList();
     }
 
     @Override
@@ -90,7 +99,7 @@ public class FuncionarioAdminServiceImpl implements FuncionarioAdminService {
                 f.setCargo(datos.cargo());
                 f.setEstado("A");
                 funcionarios.saveAndFlush(f);
-                return FuncionarioDTO.desde(f);
+                return FuncionarioDTO.desde(f, creado.getCedula());
             });
         } catch (RuntimeException e) {
             seguridad.eliminar(creado.getIdUsuario(), admin.usuario());
@@ -106,6 +115,76 @@ public class FuncionarioAdminServiceImpl implements FuncionarioAdminService {
         UsuarioSeguridad u = seguridad.restablecerPassword(usuario, clave, admin.usuario());
         boolean enviado = correo.enviarCredenciales(u.getCorreo(), u.getNombreCompleto(), u.getUsuario(), clave);
         return new CredencialesTemporalesDTO(u.getUsuario(), clave, enviado);
+    }
+
+    @Override
+    public FuncionarioDTO actualizar(Integer idFuncionario, ec.edu.espe.alertaquito.dto.ActualizarFuncionarioRequest datos,
+                                     UsuarioAutenticado admin) {
+        Funcionario actual = lectura.execute(s -> {
+            Funcionario f = funcionarios.findById(idFuncionario)
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Funcionario inexistente."));
+            f.getUsuario().getIdUsuarioSeguridad();
+            f.getEntidad().getIdEntidad();
+            return f;
+        });
+        Integer idSeguridad = actual.getUsuario().getIdUsuarioSeguridad();
+        boolean cambiaEntidad = !actual.getEntidad().getIdEntidad().equals(datos.idEntidad());
+        if (cambiaEntidad) {
+            Entidad nueva = lectura.execute(s -> entidades.findById(datos.idEntidad()))
+                    .orElseThrow(() -> new RecursoNoEncontradoException("La entidad no existe."));
+            if (!"A".equals(nueva.getEstado())) {
+                throw new ReglaNegocioException("La entidad " + nueva.getCodigo() + " esta inactiva.");
+            }
+        }
+
+        // Primero seguridad (valida el correo unico); luego la ficha y la designacion en negocio.
+        UsuarioSeguridad cuenta = seguridad.actualizarDatos(idSeguridad, datos.nombreCompleto().trim(), datos.cedula(),
+                datos.correo().trim(), admin.usuario());
+        return escritura.execute(s -> {
+            auditoria.marcarNegocio(admin.usuario());
+            Funcionario f = funcionarios.findById(idFuncionario).orElseThrow();
+            f.getUsuario().setNombreCompleto(cuenta.getNombreCompleto());
+            f.getUsuario().setCorreo(cuenta.getCorreo());
+            usuarios.save(f.getUsuario());
+            f.setCargo(datos.cargo());
+            if (cambiaEntidad) {
+                f.setEntidad(entidades.getReferenceById(datos.idEntidad()));
+            }
+            funcionarios.saveAndFlush(f);
+            f.getEntidad().getCodigo();
+            return FuncionarioDTO.desde(f, cuenta.getCedula());
+        });
+    }
+
+    @Override
+    public FuncionarioDTO darDeAlta(Integer idFuncionario, UsuarioAutenticado admin) {
+        Funcionario actual = lectura.execute(s -> {
+            Funcionario f = funcionarios.findById(idFuncionario)
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Funcionario inexistente."));
+            f.getUsuario().getIdUsuarioSeguridad();
+            f.getEntidad().getEstado();
+            return f;
+        });
+        if (!"A".equals(actual.getEntidad().getEstado())) {
+            throw new ReglaNegocioException("No se puede dar de alta: la entidad " + actual.getEntidad().getCodigo()
+                    + " esta inactiva. Active la entidad o cambie al funcionario de entidad.");
+        }
+        Integer idSeguridad = actual.getUsuario().getIdUsuarioSeguridad();
+        // Primero la designacion y luego el acceso, al reves que la baja: nunca queda alguien con acceso sin designacion.
+        escritura.executeWithoutResult(s -> {
+            auditoria.marcarNegocio(admin.usuario());
+            Funcionario f = funcionarios.findById(idFuncionario).orElseThrow();
+            f.setEstado("A");
+            funcionarios.save(f);
+        });
+        seguridad.cambiarEstado(idSeguridad, true, admin.usuario());
+        UsuarioSeguridad cuenta = seguridad.obtener(idSeguridad);
+        return lectura.execute(s -> {
+            Funcionario f = funcionarios.findById(idFuncionario).orElseThrow();
+            f.getUsuario().getNombreCompleto();
+            f.getEntidad().getCodigo();
+            return FuncionarioDTO.desde(f, cuenta.getCedula());
+        });
     }
 
     @Override

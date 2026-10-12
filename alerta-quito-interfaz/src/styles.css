@@ -765,3 +765,95 @@ h4 { font-size: 1.05rem; }
     margin: 0 0 6px !important;
   }
 }
+
+/* indicador de "grabando" del dictado por voz */
+.indicador-grabando {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: #d32f2f;
+  animation: latido 1s ease-in-out infinite;
+}
+@keyframes latido {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.7); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .indicador-grabando { animation: none; }
+}
+
+/* ---------- menu lateral: grupo desplegable (Mantenimiento) ---------- */
+button.sidebar-link {
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.sidebar-toggle .flecha {
+  margin-left: auto;
+  width: auto;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+.sidebar-toggle.grupo-activo {
+  color: var(--bs-primary);
+  font-weight: 600;
+}
+.submenu-list {
+  list-style: none;
+  padding-left: 14px;
+  margin: 6px 0 0 18px;
+  border-left: 1px solid var(--aq-borde);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.submenu-link {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: 12px;
+  color: var(--bs-dark);
+  text-decoration: none;
+  font-size: 0.93rem;
+  transition: 0.2s ease;
+}
+.submenu-link i {
+  width: 18px;
+  text-align: center;
+}
+.submenu-link:hover {
+  background: rgba(var(--bs-primary-rgb), 0.08);
+  color: var(--bs-primary);
+}
+.submenu-link.active {
+  background: rgba(var(--bs-primary-rgb), 0.14);
+  color: var(--bs-primary);
+  font-weight: 600;
+}
+
+/* ---------- mantenimiento y auditoria ---------- */
+.panel-formulario {
+  border: 1px solid var(--aq-borde);
+  border-radius: 12px;
+  background: rgba(var(--bs-primary-rgb), 0.03);
+  padding: 16px;
+  margin-bottom: 18px;
+}
+.fila-detalle > td {
+  background: #f4f8fb;
+  padding: 14px;
+}
+.fila-detalle table td.cambio {
+  background: #fff3cd;
+  font-weight: 600;
+}
+.accion-INSERT { background: #e1f3e3; border-color: #96cc9c; color: #1b5e20; }
+.accion-UPDATE { background: #fff3d6; border-color: #ecc66d; color: #7a5200; }
+.accion-DELETE { background: #fde4e2; border-color: #e99a95; color: #8e1b14; }

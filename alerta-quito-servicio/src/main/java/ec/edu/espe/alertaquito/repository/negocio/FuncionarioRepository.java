@@ -11,4 +11,6 @@ public interface FuncionarioRepository extends JpaRepository<Funcionario, Intege
     Optional<Funcionario> findByUsuarioIdUsuarioAndEstado(Integer idUsuario, String estado);
 
     List<Funcionario> findAllByOrderByIdFuncionarioDesc();
+
+    long countByEntidadIdEntidadAndEstado(Integer idEntidad, String estado);
 }

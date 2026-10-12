@@ -68,6 +68,11 @@ export class MapaComponent implements AfterViewInit, OnChanges, OnDestroy {
     setTimeout(() => this.mapa?.invalidateSize());
   }
 
+  /** Mueve el mapa a un punto (por ejemplo tras buscar una dirección o usar la ubicación del equipo). */
+  centrarEn(c: Coordenada, zoom = 17): void {
+    this.mapa?.setView([c.lat, c.lng], zoom);
+  }
+
   ngOnChanges(): void {
     if (this.mapa) this.dibujar(false);
   }

@@ -8,4 +8,10 @@ import java.util.List;
 public interface EntidadRepository extends JpaRepository<Entidad, Integer> {
 
     List<Entidad> findByEstadoOrderByNombre(String estado);
+
+    List<Entidad> findAllByOrderByNombre();
+
+    boolean existsByCodigoIgnoreCase(String codigo);
+
+    boolean existsByCodigoIgnoreCaseAndIdEntidadNot(String codigo, Integer idEntidad);
 }

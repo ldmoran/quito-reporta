@@ -30,6 +30,16 @@ export class AuthService {
       .pipe(tap((r) => this.guardar(r)));
   }
 
+  /** "Olvide mi contraseña": la respuesta es siempre la misma exista o no la cuenta. */
+  olvidePassword(identificador: string): Observable<{ mensaje: string }> {
+    return this.http.post<{ mensaje: string }>(`${environment.apiUrl}/auth/olvide-password`, { identificador });
+  }
+
+  /** Fija una clave nueva con el token del enlace recibido por correo. */
+  restablecerPassword(token: string, passwordNueva: string): Observable<{ mensaje: string }> {
+    return this.http.post<{ mensaje: string }>(`${environment.apiUrl}/auth/restablecer-password`, { token, passwordNueva });
+  }
+
   registrar(datos: RegistroCiudadano): Observable<void> {
     return this.http.post<void>(`${environment.apiUrl}/auth/registro`, datos);
   }
@@ -55,7 +65,7 @@ export class AuthService {
   /** Pantalla de inicio según el perfil de la persona. */
   rutaInicio(): string {
     if (this._sesion()?.debeCambiarPassword) return '/cambiar-password';
-    if (this.tienePerfil('ADMINI')) return '/admin';
+    if (this.tienePerfil('ADMINI')) return '/admin/estadisticas';
     if (this.tienePerfil('FUNCIO')) return '/bandeja';
     return '/mis-reportes';
   }

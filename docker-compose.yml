@@ -68,10 +68,16 @@ services:
       SEGURIDAD_DB_CLAVE: postgres
       JWT_SECRETO: ${JWT_SECRETO:-clave-solo-para-desarrollo-local-de-alerta-quito-2026}
       CORS_ORIGENES: http://localhost:4200
-      CORREO_HABILITADO: "true"
-      SMTP_HOST: mailpit
-      SMTP_PORT: "1025"
-      URL_SISTEMA: http://localhost:4200
+      # Correo: por defecto Mailpit (buzon falso). Para correo real copie .env.example a .env y complete SMTP_*.
+      CORREO_HABILITADO: ${CORREO_HABILITADO:-true}
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_AUTH: ${SMTP_AUTH:-false}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
+      SMTP_USUARIO: ${SMTP_USUARIO:-}
+      SMTP_CLAVE: ${SMTP_CLAVE:-}
+      CORREO_REMITENTE: ${CORREO_REMITENTE:-no-reply@alertaquito.ec}
+      URL_SISTEMA: ${URL_SISTEMA:-http://localhost:4200}
     ports:
       - "8080:8080"
     volumes:

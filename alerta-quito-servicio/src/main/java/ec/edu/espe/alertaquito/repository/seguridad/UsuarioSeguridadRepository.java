@@ -9,6 +9,10 @@ public interface UsuarioSeguridadRepository extends JpaRepository<UsuarioSegurid
 
     Optional<UsuarioSeguridad> findByUsuario(String usuario);
 
+    Optional<UsuarioSeguridad> findByCorreoIgnoreCase(String correo);
+
+    boolean existsByCorreoIgnoreCaseAndIdUsuarioNot(String correo, Integer idUsuario);
+
     boolean existsByUsuario(String usuario);
 
     boolean existsByCorreo(String correo);

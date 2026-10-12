@@ -101,7 +101,9 @@ export interface Funcionario {
   id: number;
   usuario: string;
   nombreCompleto: string;
+  cedula: string | null;
   correo: string;
+  idEntidad: number;
   entidadCodigo: string;
   entidadNombre: string;
   cargo: string | null;
@@ -137,3 +139,75 @@ export interface Estadisticas {
   porEstado: Record<string, number>;
   porTipo: Record<string, number>;
 }
+
+export interface EdicionFuncionario {
+  nombreCompleto: string;
+  cedula: string;
+  correo: string;
+  idEntidad: number;
+  cargo: string;
+}
+
+export interface EntidadAdmin {
+  id: number;
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+  estado: 'A' | 'I';
+  tiposActivos: number;
+  funcionariosActivos: number;
+}
+
+export interface FormEntidad {
+  codigo: string;
+  nombre: string;
+  descripcion: string;
+}
+
+export interface TipoIncidenteAdmin {
+  id: number;
+  nombre: string;
+  idEntidad: number;
+  entidadCodigo: string;
+  entidadNombre: string;
+  prioridadBase: number;
+  esEmergencia: boolean;
+  estado: 'A' | 'I';
+  reportes: number;
+}
+
+export interface FormTipoIncidente {
+  nombre: string;
+  idEntidad: number;
+  prioridadBase: number;
+  esEmergencia: boolean;
+}
+
+export interface FilaAuditoria {
+  origen: 'NEGOCIO' | 'SEGURIDAD';
+  id: number;
+  tabla: string;
+  idRegistro: string | null;
+  accion: 'INSERT' | 'UPDATE' | 'DELETE';
+  usuario: string | null;
+  fecha: string;
+  descripcion: string | null;
+}
+
+export interface PaginaAuditoria {
+  items: FilaAuditoria[];
+  pagina: number;
+  totalPaginas: number;
+  total: number;
+  tablas: string[];
+}
+
+export interface FiltroAuditoria {
+  tabla: string;
+  accion: string;
+  usuario: string;
+  pagina: number;
+}
+
+/** Una copia guardada por los triggers: columnas del registro mas operacion, usuario y fecha. */
+export type FilaHistorial = Record<string, string | number | boolean | null>;

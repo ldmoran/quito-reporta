@@ -104,6 +104,34 @@ public class UsuarioSeguridadService {
         return usuarios.save(u);
     }
 
+    /** Datos personales de la cuenta (nombre, cedula, correo). El login no se cambia. */
+    @Transactional(transactionManager = TM)
+    public UsuarioSeguridad actualizarDatos(Integer idUsuarioSeguridad, String nombreCompleto, String cedula,
+                                            String correo, String actor) {
+        UsuarioSeguridad u = buscar(idUsuarioSeguridad);
+        if (usuarios.existsByCorreoIgnoreCaseAndIdUsuarioNot(correo, idUsuarioSeguridad)) {
+            throw new ReglaNegocioException("El correo '" + correo + "' ya esta registrado por otro usuario.");
+        }
+        auditoria.marcarSeguridad(actor);
+        u.setNombreCompleto(nombreCompleto);
+        u.setCedula(cedula);
+        u.setCorreo(correo);
+        return usuarios.save(u);
+    }
+
+    /** Cedulas por id de seguridad, para armar el listado de funcionarios (la cedula no esta en la base de negocio). */
+    @Transactional(transactionManager = TM, readOnly = true)
+    public java.util.Map<Integer, String> cedulasDe(java.util.Collection<Integer> ids) {
+        java.util.Map<Integer, String> mapa = new java.util.HashMap<>();
+        usuarios.findAllById(ids).forEach(u -> mapa.put(u.getIdUsuario(), u.getCedula()));
+        return mapa;
+    }
+
+    @Transactional(transactionManager = TM, readOnly = true)
+    public UsuarioSeguridad obtener(Integer idUsuarioSeguridad) {
+        return buscar(idUsuarioSeguridad);
+    }
+
     /** Compensacion si la parte de negocio falla despues de crear el usuario (son 2 bases, sin transaccion comun). */
     @Transactional(transactionManager = TM)
     public void eliminar(Integer idUsuarioSeguridad, String actor) {

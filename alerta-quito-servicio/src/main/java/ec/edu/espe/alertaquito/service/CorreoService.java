@@ -31,6 +31,35 @@ public class CorreoService {
         return config.habilitado() && sender.getIfAvailable() != null;
     }
 
+    /** Enlace para elegir una clave nueva ("olvide mi contrasena"). */
+    public boolean enviarRestablecimiento(String destino, String nombre, String usuario, String enlace, int minutos) {
+        if (!habilitado()) {
+            log.warn("Correo deshabilitado: no se envio el enlace de restablecimiento a {}", destino);
+            return false;
+        }
+        SimpleMailMessage mensaje = new SimpleMailMessage();
+        mensaje.setFrom(config.remitente());
+        mensaje.setTo(destino);
+        mensaje.setSubject("Alerta Quito: restablecer su contraseña");
+        mensaje.setText("""
+                Hola %s,
+
+                Recibimos una solicitud para restablecer la contraseña del usuario %s.
+                Para elegir una nueva abra este enlace (vence en %d minutos y sirve una sola vez):
+
+                %s
+
+                Si usted no lo solicitó, ignore este mensaje: su contraseña actual no cambia.
+                """.formatted(nombre, usuario, minutos, enlace));
+        try {
+            sender.getObject().send(mensaje);
+            return true;
+        } catch (RuntimeException e) {
+            log.warn("No se pudo enviar el enlace de restablecimiento a {}: {}", destino, e.getMessage());
+            return false;
+        }
+    }
+
     /** @return true si el correo salio hacia el servidor SMTP */
     public boolean enviarCredenciales(String destino, String nombre, String usuario, String claveTemporal) {
         if (!habilitado()) {

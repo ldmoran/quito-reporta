@@ -16,8 +16,11 @@ AlertaQuito/
 ├── base-de-datos/
 │   ├── reset_seguridad.sql   BD de seguridad: usuarios, perfiles, intentos de acceso (el "login")
 │   └── reset_bd.sql          BD de negocio: reportes, entidades, tipos de incidente, funcionarios
-├── scripts/prueba_humo.py    Recorre el flujo completo contra el sistema levantado
+├── scripts/
+│   ├── prueba_humo.py        Recorre el flujo completo contra el sistema levantado
+│   └── reiniciar_bases.py    Borra y recarga las dos bases con los datos iniciales
 ├── docker-compose.yml        Todo el sistema local con un comando
+├── .env.example              Plantilla para activar un correo real (copiar como .env)
 ├── render.yaml               Despliegue en Render (comentado: 3er parcial)
 └── .github/workflows/ci.yml  Pipeline: pruebas + build + sistema completo
 ```
@@ -52,8 +55,31 @@ docker compose up --build
 | BD negocio (DBeaver) | `localhost:5432` · `alerta_quito` · `postgres`/`postgres` |
 | BD seguridad (DBeaver) | `localhost:5433` · `alerta_quito_seguridad` · `postgres`/`postgres` |
 
-Empezar de cero (vuelve a ejecutar los `reset_*.sql`): `docker compose down -v`.
 Para verificar que todo funciona: `python scripts/prueba_humo.py`.
+
+### Conectarse con DBeaver
+
+*Nueva conexión → PostgreSQL* y use estos datos (con `docker compose up` corriendo):
+
+| | Base de **negocio** | Base de **seguridad** |
+|---|---|---|
+| Host | `localhost` | `localhost` |
+| Puerto | `5432` | `5433` |
+| Base de datos | `alerta_quito` | `alerta_quito_seguridad` |
+| Usuario / clave | `postgres` / `postgres` | `postgres` / `postgres` |
+
+(Credenciales de desarrollo, solo accesibles desde su computador.) Las tablas están en *Schemas → public → Tables*.
+
+### Reiniciar las bases cuando haga falta
+
+| Quiero... | Comando |
+|---|---|
+| Dejar las dos bases como nuevas (usuarios, reportes y auditoría se pierden; los contenedores siguen) | `python scripts/reiniciar_bases.py` |
+| Lo mismo desde DBeaver | abrir `base-de-datos/reset_bd.sql` (en la base `alerta_quito`) y `reset_seguridad.sql` (en `alerta_quito_seguridad`) y ejecutar el script completo (Alt+X) |
+| Recrear también los contenedores y sus discos | `docker compose down -v` y luego `docker compose up -d --build` |
+
+Cada `reset_*.sql` empieza borrando todo (`DROP`), así que se puede ejecutar las veces que haga falta. Tras reiniciar,
+cierre la sesión (*Salir*) del navegador: los usuarios se volvieron a crear.
 
 ### Opción B — sin Docker para el código
 
@@ -67,17 +93,18 @@ Para verificar que todo funciona: `python scripts/prueba_humo.py`.
 La interfaz sigue el lenguaje visual del SGFDM: Bootstrap 5, íconos Font Awesome 4.7, fuente Cabin, cabecera azul,
 menú lateral blanco y un login con imágenes de fondo y panel curvo.
 
-Para poner el logo o las fotos reales basta con copiar los archivos a `alerta-quito-interfaz/public/images/` y ajustar
-los nombres en `alerta-quito-interfaz/src/app/core/marca.ts`:
+Los archivos de marca viven en `alerta-quito-interfaz/public/images/` (**no** en `dist/`, que se borra al compilar) y sus
+nombres se configuran en `alerta-quito-interfaz/src/app/core/marca.ts`:
 
 | Archivo | Uso |
 |---|---|
+| `imagen1.jpg` … `imagen5.jpg` | Fotos que rotan de fondo en el login y el registro. **Las que no existan se omiten solas**, así que basta con copiar el archivo con ese nombre. Recomendado: 1920 px de ancho o más. |
+| `slide1..4.svg` | Ilustraciones de respaldo: solo se usan si no existe ninguna foto |
 | `logo.svg` (o `.png`) | Logo vertical del panel de acceso (fondo claro) |
 | `logo_horizontal.svg` | Logo blanco de la cabecera azul |
-| `slide1..4` | Imágenes que rotan de fondo en el login y el registro (pueden ser `.jpg`) |
 | `favicon.svg` | Ícono de la pestaña |
 
-Los archivos actuales son marcadores de posición generados para el proyecto.
+El logo actual es un marcador de posición generado para el proyecto.
 
 ## Usuarios de demostración
 
@@ -98,13 +125,42 @@ nombre de usuario. Aplica al autoregistro, al cambio de clave y a cualquier clav
 temporales que genera el sistema siempre la cumplen (`PoliticaPassword`, `ClaveSegura`, `core/validadores.ts`).
 
 * **Ciudadano:** se registra solo (`/registro`).
-* **Funcionario:** lo crea el **administrador** (menú *Administración*) indicando su entidad. El sistema genera una
-  **contraseña temporal**, la envía por correo y la muestra una vez al administrador. Mientras no la cambie, el API solo le
-  permite `/api/auth/cambiar-password`; al cambiarla recibe un token nuevo y ya trabaja normal.
-* **Olvidó su clave:** el administrador usa *Restablecer clave* → nueva temporal + cambio obligatorio.
-* **Bloqueo:** 3 intentos fallidos bloquean al usuario (trigger en la base); solo el administrador lo desbloquea.
-* **Correo:** apagado por defecto. Con `CORREO_HABILITADO=true` usa SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USUARIO`,
-  `SMTP_CLAVE`, `SMTP_AUTH`, `SMTP_STARTTLS`). En Docker se conecta a **Mailpit**, que muestra los correos sin enviarlos.
+* **Funcionario:** lo crea el **administrador** (*Mantenimiento → Funcionarios*) indicando su entidad. El sistema genera
+  una **contraseña temporal**, la envía por correo y la muestra una vez al administrador. Mientras no la cambie, el API
+  solo le permite `/api/auth/cambiar-password` (debe escribir la temporal y una nueva); al cambiarla ya trabaja normal.
+* **Olvidó su clave (autoservicio):** en el login, *¿Olvidó su contraseña?* → escribe su usuario o correo → recibe un
+  enlace que vence en 30 minutos y sirve una sola vez → elige una clave nueva (que también desbloquea la cuenta). Del
+  enlace solo se guarda el hash del token; la respuesta es igual exista o no la cuenta; máximo 3 solicitudes por hora.
+* **Olvidó su clave (por el administrador):** *Restablecer clave* en Funcionarios o Usuarios → nueva temporal + cambio obligatorio.
+* **Bloqueo:** 3 intentos fallidos bloquean al usuario (trigger en la base); lo desbloquea el administrador o el enlace
+  de recuperación.
+
+### Correo
+
+El sistema envía correos con Spring Mail (claves temporales y enlaces de recuperación). Por defecto, en Docker, va a
+**Mailpit** (http://localhost:8025): un buzón falso que muestra los correos *sin entregarlos a nadie*. Para que lleguen
+a bandejas reales **no hace falta tener un servidor propio**: se usa el SMTP de un proveedor (Gmail con contraseña de
+aplicación o Brevo, ambos gratis). Copie `.env.example` como `.env`, descomente la opción elegida, complete usuario y
+clave y reinicie con `docker compose up -d`. El detalle paso a paso está dentro de `.env.example`.
+
+Con `CORREO_HABILITADO=false` no se envía nada: el administrador ve la clave temporal en pantalla y entrega el enlace
+de recuperación por otro medio.
+
+## Mantenimiento y auditoría (administrador)
+
+Como en el SGFDM, el administrador gestiona los catálogos desde la aplicación, sin tocar la base:
+
+| Pantalla | Qué permite |
+|---|---|
+| *Mantenimiento → Entidades* | Alta, edición y activar/desactivar entidades de respuesta. No se desactiva una entidad con tipos o funcionarios activos. |
+| *Mantenimiento → Tipos de incidente* | Alta y edición: nombre, entidad que lo atiende, prioridad (1 a 4) y si es emergencia (siempre prioridad 1). Un tipo nuevo aparece enseguida en el formulario del ciudadano y sus reportes se derivan a la entidad elegida. A un tipo con reportes no se le cambia la entidad. |
+| *Mantenimiento → Funcionarios* | Alta, **edición** (nombre, cédula, correo, cargo, entidad), baja y **nueva alta**, restablecer clave, búsqueda y filtro por estado. |
+| *Usuarios* | Desbloquear cuentas y restablecer claves. |
+| *Auditoría* | Últimos 100 movimientos de las dos bases con filtros por tabla, acción y usuario; *Ver cambios* muestra cada versión del registro y resalta lo que cambió. |
+| *Estadísticas* | Reportes por estado y por tipo. |
+
+Nada se borra: se activa o desactiva, para conservar el historial. Todo cambio queda en las tablas `*_hist` y `auditoria`
+con el usuario real.
 
 ## Reglas que garantiza la base de datos (triggers)
 
@@ -133,7 +189,8 @@ python scripts/prueba_humo.py               # extremo a extremo (con docker comp
 
 La prueba de integración (`FlujoReportesIT`) levanta **dos Postgres reales** y les carga los mismos `reset_*.sql`, de modo
 que los triggers se prueban de verdad: bache solo a la EPMMOP, asalto con prioridad máxima, resolver sin foto, reporte
-fuera de Quito, bloqueo, clave temporal, auditoría con el usuario correcto, etc.
+fuera de Quito, bloqueo, clave temporal, recuperación de contraseña por enlace, mantenimiento de entidades, tipos y
+funcionarios (con altas, bajas y ediciones), auditoría con el usuario correcto, etc.
 
 El pipeline (`.github/workflows/ci.yml`) ejecuta las tres cosas en cada push y pull request.
 
