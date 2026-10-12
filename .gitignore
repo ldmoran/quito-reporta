@@ -1,0 +1,26 @@
+# Java / Maven
+target/
+*.class
+*.log
+evidencias/
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+coverage/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.classpath
+.project
+.settings/
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.env
+.env*
+!.env.example

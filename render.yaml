@@ -1,0 +1,56 @@
+# =============================================================================
+# DESPLIEGUE EN RENDER  -  PARA EL 3ER PARCIAL (por ahora todo se corre en local)
+#
+# Para activarlo: descomentar TODO el bloque de abajo, subir a GitHub y en Render
+# elegir "New > Blueprint" apuntando a este repositorio.
+#
+# Notas:
+#  - Render ofrece PostgreSQL administrado (no MySQL), por eso el proyecto usa Postgres.
+#  - Son DOS bases (seguridad y negocio). En el plan gratuito solo hay 1 base por
+#    cuenta: o se paga la segunda, o se usa una sola instancia con las dos bases
+#    creadas a mano (CREATE DATABASE) y se corre cada reset_*.sql con DBeaver/psql.
+#  - Las fotos se guardan en disco. El disco del plan gratuito se borra en cada
+#    despliegue: para produccion agregar un Disk (de pago) montado en /datos/evidencias
+#    o pasar a almacenamiento tipo S3.
+#  - SMTP: crear una cuenta (Brevo, Mailgun, Gmail con contrasena de aplicacion...)
+#    y completar SMTP_* en el panel de Render. Con CORREO_HABILITADO=false el
+#    administrador ve la clave temporal en pantalla.
+# =============================================================================
+#
+# databases:
+#   - name: alerta-quito-negocio
+#     databaseName: alerta_quito
+#     plan: free
+#   - name: alerta-quito-seguridad
+#     databaseName: alerta_quito_seguridad
+#     plan: basic-256mb        # la segunda base ya no entra en el plan gratuito
+#
+# services:
+#   - type: web
+#     name: alerta-quito-servicio
+#     runtime: docker
+#     dockerfilePath: ./alerta-quito-servicio/Dockerfile
+#     dockerContext: ./alerta-quito-servicio
+#     healthCheckPath: /actuator/health
+#     envVars:
+#       - key: NEGOCIO_DB_URL
+#         fromDatabase: { name: alerta-quito-negocio, property: connectionString }   # ajustar a formato jdbc:
+#       - key: SEGURIDAD_DB_URL
+#         fromDatabase: { name: alerta-quito-seguridad, property: connectionString } # ajustar a formato jdbc:
+#       - key: JWT_SECRETO
+#         generateValue: true
+#       - key: CORS_ORIGENES
+#         value: https://alerta-quito-interfaz.onrender.com
+#       - key: URL_SISTEMA
+#         value: https://alerta-quito-interfaz.onrender.com
+#       - key: CORREO_HABILITADO
+#         value: "false"
+#
+#   - type: web
+#     name: alerta-quito-interfaz
+#     runtime: docker
+#     dockerfilePath: ./alerta-quito-interfaz/Dockerfile
+#     dockerContext: ./alerta-quito-interfaz
+#     envVars:
+#       - key: API_UPSTREAM
+#         value: https://alerta-quito-servicio.onrender.com

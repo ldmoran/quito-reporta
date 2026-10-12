@@ -1,0 +1,6 @@
+target/
+evidencias/
+.idea/
+.vscode/
+*.iml
+Dockerfile

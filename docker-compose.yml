@@ -1,0 +1,91 @@
+# Todo el sistema en local con un solo comando:
+#
+#     docker compose up --build
+#
+#   Interfaz ........ http://localhost:4200
+#   API ............. http://localhost:8080/actuator/health
+#   Correos de prueba http://localhost:8025   (Mailpit: aqui "llegan" las claves temporales)
+#   Bases (DBeaver) . localhost:5432 -> alerta_quito
+#                     localhost:5433 -> alerta_quito_seguridad       usuario/clave: postgres / postgres
+#
+# Para empezar de cero (re-ejecuta los reset_*.sql):  docker compose down -v
+
+services:
+  db-seguridad:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: alerta_quito_seguridad
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - datos-seguridad:/var/lib/postgresql/data
+      # Se ejecuta SOLO la primera vez que se crea el volumen.
+      - ./base-de-datos/reset_seguridad.sql:/docker-entrypoint-initdb.d/01-reset_seguridad.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d alerta_quito_seguridad"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  db-negocio:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: alerta_quito
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - datos-negocio:/var/lib/postgresql/data
+      - ./base-de-datos/reset_bd.sql:/docker-entrypoint-initdb.d/01-reset_bd.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d alerta_quito"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "8025:8025"   # interfaz web
+      - "1025:1025"   # SMTP
+
+  servicio:
+    build: ./alerta-quito-servicio
+    depends_on:
+      db-seguridad:
+        condition: service_healthy
+      db-negocio:
+        condition: service_healthy
+    environment:
+      NEGOCIO_DB_URL: jdbc:postgresql://db-negocio:5432/alerta_quito
+      NEGOCIO_DB_USUARIO: postgres
+      NEGOCIO_DB_CLAVE: postgres
+      SEGURIDAD_DB_URL: jdbc:postgresql://db-seguridad:5432/alerta_quito_seguridad
+      SEGURIDAD_DB_USUARIO: postgres
+      SEGURIDAD_DB_CLAVE: postgres
+      JWT_SECRETO: ${JWT_SECRETO:-clave-solo-para-desarrollo-local-de-alerta-quito-2026}
+      CORS_ORIGENES: http://localhost:4200
+      CORREO_HABILITADO: "true"
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      URL_SISTEMA: http://localhost:4200
+    ports:
+      - "8080:8080"
+    volumes:
+      - evidencias:/datos/evidencias
+
+  interfaz:
+    build: ./alerta-quito-interfaz
+    depends_on:
+      servicio:
+        condition: service_healthy
+    ports:
+      - "4200:80"
+
+volumes:
+  datos-seguridad:
+  datos-negocio:
+  evidencias:

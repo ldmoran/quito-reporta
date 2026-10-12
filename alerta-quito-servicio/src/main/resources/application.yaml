@@ -1,0 +1,55 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: alerta-quito-servicio
+  # Base de NEGOCIO (reportes, entidades, funcionarios)  -> reset_bd.sql
+  datasource:
+    url: ${NEGOCIO_DB_URL:jdbc:postgresql://localhost:5432/alerta_quito}
+    username: ${NEGOCIO_DB_USUARIO:postgres}
+    password: ${NEGOCIO_DB_CLAVE:postgres}
+  # Base de SEGURIDAD (usuarios, perfiles, intentos)  -> reset_seguridad.sql
+  seguridad-datasource:
+    url: ${SEGURIDAD_DB_URL:jdbc:postgresql://localhost:5433/alerta_quito_seguridad}
+    username: ${SEGURIDAD_DB_USUARIO:postgres}
+    password: ${SEGURIDAD_DB_CLAVE:postgres}
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USUARIO:}
+    password: ${SMTP_CLAVE:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+  jpa:
+    open-in-view: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+app:
+  jwt:
+    # Cambiar en cualquier ambiente real (minimo 32 caracteres).
+    secreto: ${JWT_SECRETO:cambiar-este-secreto-en-produccion-alerta-quito-2026}
+    expiracion-minutos: ${JWT_EXPIRACION_MINUTOS:120}
+  almacenamiento:
+    directorio: ${DIRECTORIO_EVIDENCIAS:./evidencias}
+  cors:
+    origenes-permitidos: ${CORS_ORIGENES:http://localhost:4200}
+  correo:
+    # false = no se envia nada (el administrador ve la clave temporal en pantalla).
+    # En desarrollo: true + Mailpit (docker-compose, http://localhost:8025).
+    habilitado: ${CORREO_HABILITADO:false}
+    remitente: ${CORREO_REMITENTE:no-reply@alertaquito.ec}
+    url-sistema: ${URL_SISTEMA:http://localhost:4200}
+
+management:
+  health:
+    mail:
+      enabled: false   # un SMTP caido no debe marcar el servicio como caido
+  endpoints:
+    web:
+      exposure:
+        include: health
