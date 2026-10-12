@@ -3,51 +3,71 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { mensajeDeError } from '../../core/mensajes';
+import { FondoAccesoComponent } from '../../shared/fondo-acceso.component';
 
 @Component({
   selector: 'app-registro',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, FondoAccesoComponent],
   template: `
-    <section class="tarjeta estrecha">
-      <h1>Crear cuenta de ciudadano</h1>
+    <app-fondo-acceso>
+      <h1>Crear cuenta</h1>
+      <p>Registro de ciudadanos para reportar incidentes.</p>
 
       <form [formGroup]="form" (ngSubmit)="registrar()" novalidate>
-        <label for="nombre">Nombre completo</label>
-        <input id="nombre" formControlName="nombreCompleto" autocomplete="name" />
+        <div class="input-group login-input">
+          <span class="input-group-text"><i class="fa fa-user" aria-hidden="true"></i></span>
+          <label for="nombre" class="visually-hidden">Nombre completo</label>
+          <input id="nombre" class="form-control" placeholder="Nombre completo" formControlName="nombreCompleto" autocomplete="name" />
+        </div>
 
-        <label for="cedula">Cédula</label>
-        <input id="cedula" formControlName="cedula" inputmode="numeric" maxlength="13" />
+        <div class="input-group login-input">
+          <span class="input-group-text"><i class="fa fa-id-card-o" aria-hidden="true"></i></span>
+          <label for="cedula" class="visually-hidden">Cédula</label>
+          <input id="cedula" class="form-control" placeholder="Cédula" formControlName="cedula" inputmode="numeric" maxlength="13" />
+        </div>
         @if (invalido('cedula')) {
-          <small class="error">Ingresa entre 10 y 13 dígitos.</small>
+          <small class="campo-error">Ingrese entre 10 y 13 dígitos.</small>
         }
 
-        <label for="correo">Correo</label>
-        <input id="correo" type="email" formControlName="correo" autocomplete="email" />
+        <div class="input-group login-input">
+          <span class="input-group-text"><i class="fa fa-envelope-o" aria-hidden="true"></i></span>
+          <label for="correo" class="visually-hidden">Correo</label>
+          <input id="correo" type="email" class="form-control" placeholder="Correo electrónico" formControlName="correo" autocomplete="email" />
+        </div>
         @if (invalido('correo')) {
-          <small class="error">Ingresa un correo válido.</small>
+          <small class="campo-error">Ingrese un correo válido.</small>
         }
 
-        <label for="usuario">Usuario</label>
-        <input id="usuario" formControlName="usuario" autocomplete="username" />
+        <div class="input-group login-input">
+          <span class="input-group-text"><i class="fa fa-at" aria-hidden="true"></i></span>
+          <label for="usuario" class="visually-hidden">Usuario</label>
+          <input id="usuario" class="form-control" placeholder="Usuario" formControlName="usuario" autocomplete="username" />
+        </div>
         @if (invalido('usuario')) {
-          <small class="error">De 4 a 50 caracteres: letras, números, punto, guion o guion bajo.</small>
+          <small class="campo-error">De 4 a 50 caracteres: letras, números, punto, guion o guion bajo.</small>
         }
 
-        <label for="password">Contraseña (mínimo 8 caracteres)</label>
-        <input id="password" type="password" formControlName="password" autocomplete="new-password" />
+        <div class="input-group login-input">
+          <span class="input-group-text"><i class="fa fa-key" aria-hidden="true"></i></span>
+          <label for="password" class="visually-hidden">Contraseña</label>
+          <input id="password" type="password" class="form-control" placeholder="Contraseña (mínimo 8 caracteres)" formControlName="password" autocomplete="new-password" />
+        </div>
+
+        <button type="submit" class="btn btn-primary login-btn" [disabled]="form.invalid || cargando()">
+          <i class="fa fa-user-plus me-2" aria-hidden="true"></i>
+          {{ cargando() ? 'Creando...' : 'Crear cuenta' }}
+        </button>
+
+        <div class="login-help">
+          ¿Ya tiene cuenta? <a routerLink="/login">Inicie sesión</a>
+        </div>
 
         @if (error()) {
-          <p class="error" role="alert">{{ error() }}</p>
+          <div class="alert alert-danger text-center mt-4" role="alert">{{ error() }}</div>
         }
-
-        <button class="primario" type="submit" [disabled]="form.invalid || cargando()">
-          {{ cargando() ? 'Creando…' : 'Crear cuenta' }}
-        </button>
       </form>
-
-      <p class="suave">¿Ya tienes cuenta? <a routerLink="/login">Inicia sesión</a></p>
-    </section>
+    </app-fondo-acceso>
   `,
 })
 export class RegistroComponent {

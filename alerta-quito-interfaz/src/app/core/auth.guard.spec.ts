@@ -3,7 +3,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { EnvironmentInjector, runInInjectionContext } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, provideRouter, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
-import { perfilGuard, sesionGuard } from './auth.guard';
+import { perfilGuard, sesionGuard, soloInvitadoGuard } from './auth.guard';
 import { Perfil } from './modelos';
 
 function sesion(perfiles: Perfil[], debeCambiar = false): void {
@@ -56,5 +56,16 @@ describe('guards', () => {
     preparar();
     expect(ruta(ejecutar(perfilGuard('FUNCIO')))).toBe('/cambiar-password');
     expect(ejecutar(sesionGuard)).toBeTrue();   // la pantalla de cambio sí está permitida
+  });
+
+  it('quien ya inició sesión no vuelve a ver el login: va a su pantalla de inicio', () => {
+    sesion(['FUNCIO']);
+    preparar();
+    expect(ruta(ejecutar(soloInvitadoGuard))).toBe('/bandeja');
+  });
+
+  it('quien no tiene sesión sí puede ver el login', () => {
+    preparar();
+    expect(ejecutar(soloInvitadoGuard)).toBeTrue();
   });
 });

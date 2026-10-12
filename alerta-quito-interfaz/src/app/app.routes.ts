@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { perfilGuard, sesionGuard } from './core/auth.guard';
+import { perfilGuard, sesionGuard, soloInvitadoGuard } from './core/auth.guard';
 import { AdminComponent } from './pages/admin/admin.component';
 import { BandejaComponent } from './pages/bandeja/bandeja.component';
 import { CambiarPasswordComponent } from './pages/cambiar-password/cambiar-password.component';
@@ -10,8 +10,8 @@ import { RegistroComponent } from './pages/registro/registro.component';
 import { ReporteDetalleComponent } from './pages/reporte-detalle/reporte-detalle.component';
 
 export const routes: Routes = [
-  { path: 'login', component: LoginComponent, title: 'Iniciar sesión · Alerta Quito' },
-  { path: 'registro', component: RegistroComponent, title: 'Crear cuenta · Alerta Quito' },
+  { path: 'login', component: LoginComponent, canActivate: [soloInvitadoGuard], title: 'Iniciar sesión · Alerta Quito' },
+  { path: 'registro', component: RegistroComponent, canActivate: [soloInvitadoGuard], title: 'Crear cuenta · Alerta Quito' },
   {
     path: 'cambiar-password',
     component: CambiarPasswordComponent,

@@ -414,21 +414,21 @@ FOR EACH ROW EXECUTE FUNCTION fn_funcionario_audit();
 -- 4. DATOS INICIALES
 -- ============================================
 INSERT INTO entidad (codigo, nombre, descripcion) VALUES
- ('EPMMOP',   'Empresa Publica Metropolitana de Movilidad y Obras Publicas', 'Calles, senalizacion y semaforos'),
- ('AMT',      'Agencia Metropolitana de Transito',                          'Accidentes y transito'),
- ('EEQ',      'Empresa Electrica Quito',                                    'Alumbrado publico'),
- ('POLICIA',  'Policia Nacional / ECU 911',                                 'Robos, asaltos y seguridad ciudadana'),
- ('BOMBEROS', 'Cuerpo de Bomberos de Quito',                                'Arboles caidos y obstrucciones en la via');
+ ('EPMMOP',   'Empresa Pública Metropolitana de Movilidad y Obras Públicas', 'Calles, señalización y semáforos'),
+ ('AMT',      'Agencia Metropolitana de Tránsito',                          'Accidentes y tránsito'),
+ ('EEQ',      'Empresa Eléctrica Quito',                                    'Alumbrado público'),
+ ('POLICIA',  'Policía Nacional / ECU 911',                                 'Robos, asaltos y seguridad ciudadana'),
+ ('BOMBEROS', 'Cuerpo de Bomberos de Quito',                                'Árboles caídos y obstrucciones en la vía');
 
 INSERT INTO tipo_incidente (id_entidad, nombre, prioridad_base, es_emergencia)
 SELECT e.id_entidad, t.nombre, t.prioridad, t.emergencia
 FROM (VALUES ('EPMMOP',   'Bache',                          3, FALSE),
-             ('EPMMOP',   'Semaforo danado',                2, FALSE),
-             ('EPMMOP',   'Senal de transito rota o ausente', 3, FALSE),
-             ('AMT',      'Accidente de transito',          1, TRUE),
-             ('EEQ',      'Alumbrado publico danado',       3, FALSE),
+             ('EPMMOP',   'Semáforo dañado',                2, FALSE),
+             ('EPMMOP',   'Señal de tránsito rota o ausente', 3, FALSE),
+             ('AMT',      'Accidente de tránsito',          1, TRUE),
+             ('EEQ',      'Alumbrado público dañado',       3, FALSE),
              ('POLICIA',  'Robo o asalto',                  1, TRUE),
-             ('BOMBEROS', 'Arbol caido u obstruccion',      2, FALSE)
+             ('BOMBEROS', 'Árbol caído u obstrucción',      2, FALSE)
      ) AS t(entidad, nombre, prioridad, emergencia)
 JOIN entidad e ON e.codigo = t.entidad;
 
@@ -436,7 +436,7 @@ JOIN entidad e ON e.codigo = t.entidad;
 INSERT INTO usuario (id_usuario_seguridad, usuario, nombre_completo, correo) VALUES
  (1, 'admin',          'Administrador del Sistema', 'admin@alertaquito.ec'),
  (2, 'func.epmmop',    'Funcionario EPMMOP',        'funcionario.epmmop@quito.ec'),
- (3, 'func.policia',   'Funcionario Policia',       'funcionario.policia@quito.ec'),
+ (3, 'func.policia',   'Funcionario Policía',       'funcionario.policia@quito.ec'),
  (4, 'ciudadano.demo', 'Ciudadano de Prueba',       'ciudadano@alertaquito.ec');
 
 INSERT INTO funcionario (id_usuario, id_entidad, cargo)

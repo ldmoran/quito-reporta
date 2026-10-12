@@ -1,4 +1,4 @@
-# 🚨 Alerta Quito
+# Alerta Quito
 
 Sistema de reporte de incidentes viales y de seguridad en Quito. El ciudadano reporta con **tipo, foto y ubicación**
 (sin llamar por teléfono); el sistema lo **deriva automáticamente** a la entidad competente (EPMMOP, AMT, EEQ, Policía,
@@ -61,6 +61,23 @@ Para verificar que todo funciona: `python scripts/prueba_humo.py`.
    en DBeaver `reset_seguridad.sql` y `reset_bd.sql` (Execute script · Alt+X) cada una en su base.
 2. Servicio: `cd alerta-quito-servicio && mvn spring-boot:run`
 3. Interfaz: `cd alerta-quito-interfaz && npm install && npm start` (el proxy envía `/api` al puerto 8080).
+
+## Diseño y marca
+
+La interfaz sigue el lenguaje visual del SGFDM: Bootstrap 5, íconos Font Awesome 4.7, fuente Cabin, cabecera azul,
+menú lateral blanco y un login con imágenes de fondo y panel curvo.
+
+Para poner el logo o las fotos reales basta con copiar los archivos a `alerta-quito-interfaz/public/images/` y ajustar
+los nombres en `alerta-quito-interfaz/src/app/core/marca.ts`:
+
+| Archivo | Uso |
+|---|---|
+| `logo.svg` (o `.png`) | Logo vertical del panel de acceso (fondo claro) |
+| `logo_horizontal.svg` | Logo blanco de la cabecera azul |
+| `slide1..4` | Imágenes que rotan de fondo en el login y el registro (pueden ser `.jpg`) |
+| `favicon.svg` | Ícono de la pestaña |
+
+Los archivos actuales son marcadores de posición generados para el proyecto.
 
 ## Usuarios de demostración
 

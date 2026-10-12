@@ -16,33 +16,40 @@ const CADA_MS = 15_000;
   standalone: true,
   imports: [DatePipe, RouterLink, MapaComponent, EstadoChipComponent],
   template: `
-    <section class="tarjeta">
-      <div class="fila entre">
-        <h1>Mis reportes</h1>
-        <a class="boton primario" routerLink="/nuevo-reporte">+ Nuevo reporte</a>
+    <div class="dashboard-section">
+      <div class="section-heading">
+        <div>
+          <h4>Mis reportes</h4>
+          <p>Seguimiento del estado de los incidentes que usted reportó. Se actualiza automáticamente.</p>
+        </div>
+        <a class="btn btn-primary btn-sm" routerLink="/nuevo-reporte">
+          <i class="fa fa-plus-circle me-1" aria-hidden="true"></i> Nuevo reporte
+        </a>
       </div>
 
       @for (aviso of avisos(); track aviso) {
-        <p class="aviso" role="status">{{ aviso }}</p>
+        <div class="alert alert-info py-2" role="status">
+          <i class="fa fa-info-circle me-2" aria-hidden="true"></i>{{ aviso }}
+        </div>
       }
       @if (error()) {
-        <p class="error" role="alert">{{ error() }}</p>
+        <div class="alert alert-danger" role="alert">{{ error() }}</div>
       }
 
       @if (cargado() && reportes().length === 0) {
-        <p class="suave">Aún no has enviado reportes.</p>
+        <p class="text-muted mb-0">Aún no ha enviado reportes.</p>
       }
 
       @if (reportes().length > 0) {
         <app-mapa [puntos]="puntos()" (puntoClick)="abrir($event)" altura="280px" />
-        <ul class="lista">
+        <ul class="lista-reportes">
           @for (r of reportes(); track r.id) {
             <li>
-              <a class="item" [routerLink]="['/reporte', r.id]">
-                <span class="icono" aria-hidden="true">{{ icono(r.tipoIncidente) }}</span>
+              <a class="reporte-item" [routerLink]="['/reporte', r.id]">
+                <span class="icono-tipo"><i [class]="icono(r.tipoIncidente)" aria-hidden="true"></i></span>
                 <span class="cuerpo">
                   <strong>{{ r.tipoIncidente }}</strong>
-                  <small>{{ r.codigo }} · {{ r.fechaCreacion | date: 'dd/MM/yyyy HH:mm' }} · {{ r.entidad }}</small>
+                  <small>{{ r.codigo }} - {{ r.fechaCreacion | date: 'dd/MM/yyyy HH:mm' }} - {{ r.entidad }}</small>
                 </span>
                 <app-estado-chip [estado]="r.estado" />
               </a>
@@ -50,7 +57,7 @@ const CADA_MS = 15_000;
           }
         </ul>
       }
-    </section>
+    </div>
   `,
 })
 export class MisReportesComponent implements OnInit, OnDestroy {
@@ -68,7 +75,7 @@ export class MisReportesComponent implements OnInit, OnDestroy {
       id: r.id,
       lat: r.latitud,
       lng: r.longitud,
-      titulo: `${r.tipoIncidente} — ${etiquetaEstado(r.estado)}`,
+      titulo: `${r.tipoIncidente} - ${etiquetaEstado(r.estado)}`,
       color: COLOR_PRIORIDAD[r.prioridad] ?? '#607d8b',
     })),
   );
@@ -109,7 +116,7 @@ export class MisReportesComponent implements OnInit, OnDestroy {
     const previos = new Map(antes.map((r) => [r.id, r.estado]));
     const cambios = despues
       .filter((r) => previos.has(r.id) && previos.get(r.id) !== r.estado)
-      .map((r) => `Tu reporte ${r.codigo} (${r.tipoIncidente}) ahora está: ${etiquetaEstado(r.estado)}.`);
+      .map((r) => `Su reporte ${r.codigo} (${r.tipoIncidente}) ahora está: ${etiquetaEstado(r.estado)}.`);
     if (cambios.length > 0) this.avisos.update((a) => [...cambios, ...a].slice(0, 5));
   }
 }

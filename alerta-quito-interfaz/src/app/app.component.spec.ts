@@ -11,27 +11,34 @@ function configurar(): void {
   });
 }
 
-function guardarSesion(perfiles: string[]): void {
+function guardarSesion(perfiles: string[], debeCambiarPassword = false): void {
   sessionStorage.setItem(
     'alerta-quito.sesion',
     JSON.stringify({
       idUsuario: 1, usuario: 'u', nombre: 'Persona Prueba', perfiles, token: 't',
-      venceEn: Date.now() + 60_000, debeCambiarPassword: false,
+      venceEn: Date.now() + 60_000, debeCambiarPassword,
     }),
   );
 }
 
-describe('AppComponent', () => {
-  beforeEach(() => sessionStorage.clear());
+function opcionesMenu(html: HTMLElement): (string | undefined)[] {
+  return Array.from(html.querySelectorAll('.sidebar-link span')).map((s) => s.textContent?.trim());
+}
 
-  it('muestra solo la marca cuando no hay sesión', () => {
+describe('AppComponent', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    localStorage.clear();
+  });
+
+  it('sin sesión no dibuja cabecera ni menú (solo las pantallas de acceso)', () => {
     configurar();
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const html = fixture.nativeElement as HTMLElement;
 
-    expect(html.querySelector('.marca')?.textContent).toContain('Alerta Quito');
-    expect(html.querySelector('nav')).toBeNull();
+    expect(html.querySelector('.top-navbar')).toBeNull();
+    expect(html.querySelector('.sidebar')).toBeNull();
   });
 
   it('el ciudadano ve su menú y no el de funcionario ni administración', () => {
@@ -39,22 +46,48 @@ describe('AppComponent', () => {
     configurar();
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
-    const enlaces = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('nav a')).map((a) => a.textContent?.trim());
+    const opciones = opcionesMenu(fixture.nativeElement);
 
-    expect(enlaces).toContain('Nuevo reporte');
-    expect(enlaces).toContain('Mis reportes');
-    expect(enlaces).not.toContain('Bandeja');
-    expect(enlaces).not.toContain('Administración');
+    expect(opciones).toContain('Mis reportes');
+    expect(opciones).toContain('Nuevo reporte');
+    expect(opciones).not.toContain('Bandeja de reportes');
+    expect(opciones).not.toContain('Administración');
   });
 
-  it('el administrador ve la opción Administración', () => {
+  it('el administrador ve la opción Administración y la cabecera con su nombre', () => {
     guardarSesion(['ADMINI']);
     configurar();
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
-    const enlaces = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('nav a')).map((a) => a.textContent?.trim());
+    const html = fixture.nativeElement as HTMLElement;
 
-    expect(enlaces).toContain('Administración');
-    expect(enlaces).not.toContain('Nuevo reporte');
+    expect(opcionesMenu(html)).toContain('Administración');
+    expect(opcionesMenu(html)).not.toContain('Nuevo reporte');
+    expect(html.querySelector('.top-navbar')?.textContent).toContain('Persona Prueba');
+    expect(html.querySelector('.top-navbar')?.textContent).toContain('Administrador');
+  });
+
+  it('con clave temporal el menú solo ofrece cambiar la contraseña', () => {
+    guardarSesion(['FUNCIO'], true);
+    configurar();
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    expect(opcionesMenu(fixture.nativeElement)).toEqual(['Cambiar contraseña']);
+  });
+
+  it('el botón de la cabecera oculta y muestra el menú lateral', () => {
+    guardarSesion(['CIUDAD']);
+    configurar();
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const html = fixture.nativeElement as HTMLElement;
+    const boton = html.querySelector('.hamburger-btn') as HTMLButtonElement;
+    const estabaOculto = html.querySelector('.sidebar')!.classList.contains('oculta');
+
+    boton.click();
+    fixture.detectChanges();
+
+    expect(html.querySelector('.sidebar')!.classList.contains('oculta')).toBe(!estabaOculto);
   });
 });

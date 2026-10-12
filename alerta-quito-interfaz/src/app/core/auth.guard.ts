@@ -3,6 +3,12 @@ import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { Perfil } from './modelos';
 
+/** Login y registro: quien ya tiene sesión va directo a su pantalla de inicio. */
+export const soloInvitadoGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  return auth.autenticado() ? inject(Router).createUrlTree([auth.rutaInicio()]) : true;
+};
+
 /** Cualquier persona con sesión (incluso con clave temporal): se usa en "cambiar contraseña". */
 export const sesionGuard: CanActivateFn = () => {
   const auth = inject(AuthService);

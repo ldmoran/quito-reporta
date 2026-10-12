@@ -263,7 +263,7 @@ WHERE a.codigo = 'ALQ';
 INSERT INTO usuario (usuario, nombre_completo, cedula, correo, password_hash) VALUES
  ('admin',          'Administrador del Sistema', '1700000001', 'admin@alertaquito.ec',         crypt('Admin123*', gen_salt('bf', 10))),
  ('func.epmmop',    'Funcionario EPMMOP',        '1700000002', 'funcionario.epmmop@quito.ec',  crypt('Func123*',  gen_salt('bf', 10))),
- ('func.policia',   'Funcionario Policia',       '1700000003', 'funcionario.policia@quito.ec', crypt('Func123*',  gen_salt('bf', 10))),
+ ('func.policia',   'Funcionario Policía',       '1700000003', 'funcionario.policia@quito.ec', crypt('Func123*',  gen_salt('bf', 10))),
  ('ciudadano.demo', 'Ciudadano de Prueba',       '1700000004', 'ciudadano@alertaquito.ec',     crypt('Ciud123*',  gen_salt('bf', 10)));
 
 INSERT INTO usuario_perfil (id_usuario, id_perfil)

@@ -22,53 +22,59 @@ interface Foto {
   standalone: true,
   imports: [DatePipe, FormsModule, RouterLink, MapaComponent, EstadoChipComponent, PrioridadChipComponent],
   template: `
-    <section class="tarjeta">
-      <a [routerLink]="auth.tienePerfil('FUNCIO') ? '/bandeja' : '/mis-reportes'">← Volver</a>
+    <div class="dashboard-section">
+      <a class="btn btn-secondary btn-sm mb-3" [routerLink]="auth.tienePerfil('FUNCIO') ? '/bandeja' : '/mis-reportes'">
+        <i class="fa fa-arrow-left me-1" aria-hidden="true"></i> Volver
+      </a>
 
       @if (error() && !detalle()) {
-        <p class="error" role="alert">{{ error() }}</p>
+        <div class="alert alert-danger" role="alert">{{ error() }}</div>
       }
 
       @if (detalle(); as d) {
-        <div class="fila entre">
-          <h1>{{ d.reporte.tipoIncidente }}</h1>
-          <span class="fila">
+        <div class="section-heading">
+          <div>
+            <h4>{{ d.reporte.tipoIncidente }}</h4>
+            <p>
+              Reporte <strong>{{ d.reporte.codigo }}</strong> - enviado a {{ d.entidadNombre }} -
+              {{ d.reporte.fechaCreacion | date: 'dd/MM/yyyy HH:mm' }} - por {{ d.ciudadano }}
+            </p>
+          </div>
+          <div class="d-flex gap-2">
             <app-prioridad-chip [prioridad]="d.reporte.prioridad" />
             <app-estado-chip [estado]="d.reporte.estado" />
-          </span>
+          </div>
         </div>
-        <p class="suave">
-          Reporte <strong>{{ d.reporte.codigo }}</strong> · enviado a {{ d.entidadNombre }} ·
-          {{ d.reporte.fechaCreacion | date: 'dd/MM/yyyy HH:mm' }} · por {{ d.ciudadano }}
-        </p>
+
         @if (d.reporte.descripcion) {
           <p>{{ d.reporte.descripcion }}</p>
         }
-        <p class="suave">
-          📍 {{ d.reporte.direccion || 'Sin dirección' }}@if (d.referencia) {
-            · {{ d.referencia }}
+        <p class="text-muted">
+          <i class="fa fa-map-marker me-1" aria-hidden="true"></i>
+          {{ d.reporte.direccion || 'Sin dirección' }}@if (d.referencia) {
+            - {{ d.referencia }}
           }
         </p>
-        <app-mapa [puntos]="punto()" altura="220px" />
+        <app-mapa [puntos]="punto()" altura="230px" />
 
         @if (fotos().length > 0) {
-          <h2>Evidencias</h2>
+          <h4 class="subtitulo">Evidencias</h4>
           <div class="fotos">
             @for (f of fotos(); track f.id) {
               <figure>
                 <img [src]="f.url" [alt]="'Foto de ' + (f.tipo === 'CREACION' ? 'el incidente' : 'la resolución')" />
-                <figcaption>{{ f.tipo === 'CREACION' ? 'Reporte' : 'Resolución' }}</figcaption>
+                <figcaption>{{ f.tipo === 'CREACION' ? 'Foto del reporte' : 'Foto de la resolución' }}</figcaption>
               </figure>
             }
           </div>
         }
 
-        <h2>Seguimiento</h2>
-        <ol class="linea">
+        <h4 class="subtitulo">Seguimiento</h4>
+        <ol class="linea-tiempo">
           @for (h of d.historial; track $index) {
             <li>
               <strong>{{ etiqueta(h.estadoNuevo) }}</strong>
-              <small>{{ h.fecha | date: 'dd/MM/yyyy HH:mm' }} · {{ h.usuario }}</small>
+              <small>{{ h.fecha | date: 'dd/MM/yyyy HH:mm' }} - {{ h.usuario }}</small>
               @if (h.comentario) {
                 <span>{{ h.comentario }}</span>
               }
@@ -77,32 +83,40 @@ interface Foto {
         </ol>
 
         @if (puedeGestionar() && siguientes().length > 0) {
-          <h2>Atender reporte</h2>
-          <label for="nuevoEstado">Nuevo estado</label>
-          <select id="nuevoEstado" [(ngModel)]="nuevoEstado">
-            <option value="" disabled>Elige…</option>
-            @for (e of siguientes(); track e) {
-              <option [value]="e">{{ etiquetas[e] }}</option>
+          <h4 class="subtitulo">Atender reporte</h4>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" for="nuevoEstado">Nuevo estado</label>
+              <select id="nuevoEstado" class="form-select" [(ngModel)]="nuevoEstado">
+                <option value="" disabled>Seleccione...</option>
+                @for (e of siguientes(); track e) {
+                  <option [value]="e">{{ etiquetas[e] }}</option>
+                }
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label" for="comentario">Comentario (opcional)</label>
+              <input id="comentario" class="form-control" [(ngModel)]="comentario" maxlength="500" />
+            </div>
+            @if (nuevoEstado === 'RESUELTO') {
+              <div class="col-12">
+                <label class="form-label" for="fotoResolucion">Foto de la solución (obligatoria)</label>
+                <input id="fotoResolucion" class="form-control" type="file" accept="image/jpeg,image/png,image/webp" (change)="elegirFoto($event)" />
+              </div>
             }
-          </select>
-
-          <label for="comentario">Comentario (opcional)</label>
-          <textarea id="comentario" [(ngModel)]="comentario" maxlength="500" rows="2"></textarea>
-
-          @if (nuevoEstado === 'RESUELTO') {
-            <label for="fotoResolucion">Foto de la solución (obligatoria)</label>
-            <input id="fotoResolucion" type="file" accept="image/jpeg,image/png,image/webp" (change)="elegirFoto($event)" />
-          }
-
+          </div>
           @if (error()) {
-            <p class="error" role="alert">{{ error() }}</p>
+            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
           }
-          <button class="primario" type="button" (click)="guardar()" [disabled]="!nuevoEstado || guardando()">
-            {{ guardando() ? 'Guardando…' : 'Actualizar estado' }}
-          </button>
+          <div class="mt-3">
+            <button class="btn btn-primary" type="button" (click)="guardar()" [disabled]="!nuevoEstado || guardando()">
+              <i class="fa fa-save me-2" aria-hidden="true"></i>
+              {{ guardando() ? 'Guardando...' : 'Actualizar estado' }}
+            </button>
+          </div>
         }
       }
-    </section>
+    </div>
   `,
 })
 export class ReporteDetalleComponent implements OnInit, OnDestroy {
@@ -152,7 +166,7 @@ export class ReporteDetalleComponent implements OnInit, OnDestroy {
   guardar(): void {
     if (!this.nuevoEstado) return;
     if (this.nuevoEstado === 'RESUELTO' && !this.fotoResolucion) {
-      this.error.set('Para resolver el reporte debes subir la foto de la solución.');
+      this.error.set('Para resolver el reporte debe subir la foto de la solución.');
       return;
     }
     this.guardando.set(true);

@@ -2,9 +2,9 @@ import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
+import { etiquetaEstado } from '../../core/etiquetas';
 import { mensajeDeError } from '../../core/mensajes';
 import { Entidad, Estadisticas, Funcionario } from '../../core/modelos';
-import { etiquetaEstado } from '../../core/etiquetas';
 
 interface ClaveEntregable {
   usuario: string;
@@ -19,83 +19,105 @@ type Pestana = 'funcionarios' | 'estadisticas' | 'usuarios';
   standalone: true,
   imports: [DatePipe, ReactiveFormsModule],
   template: `
-    <section class="tarjeta">
-      <h1>Administración</h1>
-      <nav class="pestanas" role="tablist">
+    <div class="dashboard-section">
+      <div class="section-heading">
+        <div>
+          <h4>Administración</h4>
+          <p>Funcionarios designados por las entidades, usuarios y estadísticas del sistema.</p>
+        </div>
+      </div>
+
+      <ul class="nav nav-tabs mb-3" role="tablist">
         @for (p of pestanas; track p.id) {
-          <button type="button" role="tab" [class.activa]="pestana() === p.id" [attr.aria-selected]="pestana() === p.id" (click)="pestana.set(p.id)">
-            {{ p.titulo }}
-          </button>
+          <li class="nav-item" role="presentation">
+            <button
+              type="button"
+              class="nav-link"
+              role="tab"
+              [class.active]="pestana() === p.id"
+              [attr.aria-selected]="pestana() === p.id"
+              (click)="pestana.set(p.id)"
+            >
+              <i [class]="p.icono + ' me-2'" aria-hidden="true"></i>{{ p.titulo }}
+            </button>
+          </li>
         }
-      </nav>
+      </ul>
 
       @if (mensaje()) {
-        <p class="aviso" role="status">{{ mensaje() }}</p>
+        <div class="alert alert-success py-2" role="status">{{ mensaje() }}</div>
       }
       @if (error()) {
-        <p class="error" role="alert">{{ error() }}</p>
+        <div class="alert alert-danger py-2" role="alert">{{ error() }}</div>
       }
 
       @if (entregable(); as c) {
         <div class="clave-entrega" role="alert">
           <strong>Credenciales de {{ c.usuario }}</strong>
-          <p>
+          <p class="mb-1 mt-2">
             Contraseña temporal: <code>{{ c.clave }}</code>
           </p>
           @if (c.correoEnviado) {
-            <p class="suave">✔ También se envió por correo. La persona deberá cambiarla en su primer ingreso.</p>
+            <p class="text-muted mb-2">
+              <i class="fa fa-check-circle me-1" aria-hidden="true"></i>
+              También se envió por correo. La persona deberá cambiarla en su primer ingreso.
+            </p>
           } @else {
-            <p class="suave">
-              El correo no está habilitado o no se pudo enviar: entrégala por un medio seguro. Se muestra una sola vez.
+            <p class="text-muted mb-2">
+              El correo no está habilitado o no se pudo enviar: entregue la clave por un medio seguro. Se muestra una sola vez.
               La persona deberá cambiarla en su primer ingreso.
             </p>
           }
-          <button type="button" (click)="entregable.set(null)">Entendido</button>
+          <button type="button" class="btn btn-secondary btn-sm" (click)="entregable.set(null)">Entendido</button>
         </div>
       }
 
       @switch (pestana()) {
         @case ('funcionarios') {
-          <h2>Nuevo funcionario</h2>
-          <form [formGroup]="form" (ngSubmit)="crear()" novalidate class="rejilla-form">
-            <div>
-              <label for="f-nombre">Nombre completo</label>
-              <input id="f-nombre" formControlName="nombreCompleto" />
+          <h4 class="subtitulo">Nuevo funcionario</h4>
+          <form [formGroup]="form" (ngSubmit)="crear()" novalidate>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label" for="f-nombre">Nombre completo</label>
+                <input id="f-nombre" class="form-control" formControlName="nombreCompleto" />
+              </div>
+              <div class="col-md-3">
+                <label class="form-label" for="f-cedula">Cédula</label>
+                <input id="f-cedula" class="form-control" formControlName="cedula" inputmode="numeric" maxlength="13" />
+              </div>
+              <div class="col-md-3">
+                <label class="form-label" for="f-usuario">Usuario</label>
+                <input id="f-usuario" class="form-control" formControlName="usuario" />
+              </div>
+              <div class="col-md-5">
+                <label class="form-label" for="f-correo">Correo</label>
+                <input id="f-correo" type="email" class="form-control" formControlName="correo" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="f-entidad">Entidad</label>
+                <select id="f-entidad" class="form-select" formControlName="idEntidad">
+                  <option [ngValue]="0" disabled>Seleccione...</option>
+                  @for (e of entidades(); track e.id) {
+                    <option [ngValue]="e.id">{{ e.codigo }} - {{ e.nombre }}</option>
+                  }
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label" for="f-cargo">Cargo</label>
+                <input id="f-cargo" class="form-control" formControlName="cargo" />
+              </div>
             </div>
-            <div>
-              <label for="f-cedula">Cédula</label>
-              <input id="f-cedula" formControlName="cedula" inputmode="numeric" maxlength="13" />
-            </div>
-            <div>
-              <label for="f-correo">Correo</label>
-              <input id="f-correo" type="email" formControlName="correo" />
-            </div>
-            <div>
-              <label for="f-usuario">Usuario</label>
-              <input id="f-usuario" formControlName="usuario" />
-            </div>
-            <div>
-              <label for="f-entidad">Entidad</label>
-              <select id="f-entidad" formControlName="idEntidad">
-                <option [ngValue]="0" disabled>Elige…</option>
-                @for (e of entidades(); track e.id) {
-                  <option [ngValue]="e.id">{{ e.codigo }} — {{ e.nombre }}</option>
-                }
-              </select>
-            </div>
-            <div>
-              <label for="f-cargo">Cargo</label>
-              <input id="f-cargo" formControlName="cargo" />
-            </div>
-            <p class="suave ancho">La contraseña la genera el sistema y se envía al correo. Deberá cambiarla al ingresar.</p>
-            <button class="primario" type="submit" [disabled]="form.invalid || guardando()">
-              {{ guardando() ? 'Creando…' : 'Crear funcionario' }}
+            <p class="text-muted mt-3 mb-2">
+              La contraseña la genera el sistema y se envía al correo. El funcionario deberá cambiarla al ingresar.
+            </p>
+            <button class="btn btn-primary" type="submit" [disabled]="form.invalid || guardando()">
+              <i class="fa fa-user-plus me-2" aria-hidden="true"></i>{{ guardando() ? 'Creando...' : 'Crear funcionario' }}
             </button>
           </form>
 
-          <h2>Funcionarios</h2>
-          <div class="tabla-scroll">
-            <table>
+          <h4 class="subtitulo">Funcionarios registrados</h4>
+          <div class="custom-table">
+            <table class="table align-middle">
               <thead>
                 <tr>
                   <th>Nombre</th>
@@ -110,18 +132,30 @@ type Pestana = 'funcionarios' | 'estadisticas' | 'usuarios';
                 @for (f of funcionarios(); track f.id) {
                   <tr [class.inactivo]="f.estado === 'I'">
                     <td>
-                      {{ f.nombreCompleto }}<br /><small>{{ f.correo }}</small>
+                      {{ f.nombreCompleto }}<br /><small class="text-muted">{{ f.correo }}</small>
                     </td>
                     <td>{{ f.usuario }}</td>
                     <td>{{ f.entidadCodigo }}</td>
                     <td>{{ f.cargo }}</td>
-                    <td>{{ f.estado === 'A' ? 'Activo' : 'Dado de baja' }} <small>{{ f.fechaDesignacion | date: 'dd/MM/yy' }}</small></td>
-                    <td class="acciones">
+                    <td>
+                      {{ f.estado === 'A' ? 'Activo' : 'Dado de baja' }}<br />
+                      <small class="text-muted">{{ f.fechaDesignacion | date: 'dd/MM/yyyy' }}</small>
+                    </td>
+                    <td class="text-end text-nowrap">
                       @if (f.estado === 'A') {
-                        <button type="button" (click)="restablecer(f.usuario)">Restablecer clave</button>
-                        <button type="button" class="peligro" (click)="darDeBaja(f)">Dar de baja</button>
+                        <button type="button" class="btn btn-secondary btn-sm me-1" (click)="restablecer(f.usuario)">
+                          <i class="fa fa-refresh me-1" aria-hidden="true"></i>Restablecer clave
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" (click)="darDeBaja(f)">
+                          <i class="fa fa-user-times me-1" aria-hidden="true"></i>Dar de baja
+                        </button>
                       }
                     </td>
+                  </tr>
+                }
+                @if (funcionarios().length === 0) {
+                  <tr>
+                    <td colspan="6" class="text-center text-muted py-4">No hay funcionarios registrados.</td>
                   </tr>
                 }
               </tbody>
@@ -130,48 +164,59 @@ type Pestana = 'funcionarios' | 'estadisticas' | 'usuarios';
         }
         @case ('estadisticas') {
           @if (estadisticas(); as s) {
-            <h2>{{ s.total }} reportes en total</h2>
-            <h3>Por estado</h3>
+            <h4 class="subtitulo">Total de reportes: {{ s.total }}</h4>
+            <h5 class="mt-3">Por estado</h5>
             @for (fila of porEstado(); track fila.nombre) {
               <div class="fila-barra">
                 <span>{{ fila.nombre }}</span>
                 <div><i [style.width.%]="fila.porcentaje"></i></div>
-                <b>{{ fila.valor }}</b>
+                <strong>{{ fila.valor }}</strong>
               </div>
             }
-            <h3>Por tipo de incidente</h3>
+            <h5 class="mt-4">Por tipo de incidente</h5>
             @for (fila of porTipo(); track fila.nombre) {
               <div class="fila-barra">
                 <span>{{ fila.nombre }}</span>
                 <div><i [style.width.%]="fila.porcentaje"></i></div>
-                <b>{{ fila.valor }}</b>
+                <strong>{{ fila.valor }}</strong>
               </div>
             }
           } @else {
-            <p class="suave">Cargando…</p>
+            <p class="text-muted">Cargando...</p>
           }
         }
         @case ('usuarios') {
-          <h2>Desbloquear usuario</h2>
-          <p class="suave">Un usuario se bloquea tras 3 intentos fallidos de ingreso.</p>
-          <form [formGroup]="formUsuario" (ngSubmit)="desbloquear()" novalidate class="fila">
-            <input formControlName="usuario" placeholder="Nombre de usuario" aria-label="Nombre de usuario" />
-            <button type="submit" [disabled]="formUsuario.invalid">Desbloquear</button>
-            <button type="button" [disabled]="formUsuario.invalid" (click)="restablecerDesdeFormulario()">Restablecer clave</button>
+          <h4 class="subtitulo">Desbloqueo y restablecimiento de contraseña</h4>
+          <p class="text-muted">Un usuario se bloquea tras 3 intentos fallidos de ingreso.</p>
+          <form [formGroup]="formUsuario" (ngSubmit)="desbloquear()" novalidate class="row g-2 align-items-end">
+            <div class="col-md-5">
+              <label class="form-label" for="u-usuario">Nombre de usuario</label>
+              <input id="u-usuario" class="form-control" formControlName="usuario" />
+            </div>
+            <div class="col-auto">
+              <button type="submit" class="btn btn-primary" [disabled]="formUsuario.invalid">
+                <i class="fa fa-unlock me-2" aria-hidden="true"></i>Desbloquear
+              </button>
+            </div>
+            <div class="col-auto">
+              <button type="button" class="btn btn-secondary" [disabled]="formUsuario.invalid" (click)="restablecerDesdeFormulario()">
+                <i class="fa fa-refresh me-2" aria-hidden="true"></i>Restablecer clave
+              </button>
+            </div>
           </form>
         }
       }
-    </section>
+    </div>
   `,
 })
 export class AdminComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly fb = inject(FormBuilder);
 
-  readonly pestanas: { id: Pestana; titulo: string }[] = [
-    { id: 'funcionarios', titulo: 'Funcionarios' },
-    { id: 'estadisticas', titulo: 'Estadísticas' },
-    { id: 'usuarios', titulo: 'Usuarios' },
+  readonly pestanas: { id: Pestana; titulo: string; icono: string }[] = [
+    { id: 'funcionarios', titulo: 'Funcionarios', icono: 'fa fa-users' },
+    { id: 'estadisticas', titulo: 'Estadísticas', icono: 'fa fa-bar-chart' },
+    { id: 'usuarios', titulo: 'Usuarios', icono: 'fa fa-key' },
   ];
   readonly pestana = signal<Pestana>('funcionarios');
   readonly funcionarios = signal<Funcionario[]>([]);
@@ -205,8 +250,7 @@ export class AdminComponent implements OnInit {
     if (this.form.invalid) return;
     this.guardando.set(true);
     this.limpiar();
-    const v = this.form.getRawValue();
-    this.api.registrarFuncionario(v).subscribe({
+    this.api.registrarFuncionario(this.form.getRawValue()).subscribe({
       next: (r) => {
         this.entregable.set({ usuario: r.funcionario.usuario, clave: r.passwordTemporal, correoEnviado: r.correoEnviado });
         this.form.reset({ nombreCompleto: '', cedula: '', correo: '', usuario: '', idEntidad: 0, cargo: '' });

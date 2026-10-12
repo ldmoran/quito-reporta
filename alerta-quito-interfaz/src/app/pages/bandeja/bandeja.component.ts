@@ -16,36 +16,41 @@ const CADA_MS = 10_000;
   standalone: true,
   imports: [DatePipe, RouterLink, MapaComponent, EstadoChipComponent, PrioridadChipComponent],
   template: `
-    <section class="tarjeta">
-      <div class="fila entre">
-        <h1>Bandeja de reportes</h1>
-        <label class="casilla">
-          <input type="checkbox" [checked]="incluirCerrados()" (change)="alternarCerrados($event)" />
-          Incluir cerrados
-        </label>
+    <div class="dashboard-section">
+      <div class="section-heading">
+        <div>
+          <h4>Bandeja de reportes</h4>
+          <p>Reportes derivados a su entidad, con las emergencias primero. Se actualiza cada 10 segundos.</p>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="cerrados" [checked]="incluirCerrados()" (change)="alternarCerrados($event)" />
+          <label class="form-check-label" for="cerrados">Incluir cerrados</label>
+        </div>
       </div>
-      <p class="suave">Reportes derivados a tu entidad, las emergencias primero. Se actualiza solo cada 10 segundos.</p>
 
       @if (nuevasEmergencias() > 0) {
-        <p class="aviso urgente" role="alert">🚨 Llegaron {{ nuevasEmergencias() }} reporte(s) de prioridad crítica.</p>
+        <div class="alert alert-danger py-2" role="alert">
+          <i class="fa fa-bell me-2" aria-hidden="true"></i>
+          Llegaron {{ nuevasEmergencias() }} reporte(s) de prioridad crítica.
+        </div>
       }
       @if (error()) {
-        <p class="error" role="alert">{{ error() }}</p>
+        <div class="alert alert-danger" role="alert">{{ error() }}</div>
       }
       @if (cargado() && reportes().length === 0) {
-        <p class="suave">No hay reportes pendientes. 🎉</p>
+        <p class="text-muted mb-0">No hay reportes pendientes.</p>
       }
 
       @if (reportes().length > 0) {
         <app-mapa [puntos]="puntos()" (puntoClick)="abrir($event)" altura="280px" />
-        <ul class="lista">
+        <ul class="lista-reportes">
           @for (r of reportes(); track r.id) {
             <li>
-              <a class="item" [class.critico]="r.prioridad === 1" [routerLink]="['/reporte', r.id]">
-                <span class="icono" aria-hidden="true">{{ icono(r.tipoIncidente) }}</span>
+              <a class="reporte-item" [class.critico]="r.prioridad === 1" [routerLink]="['/reporte', r.id]">
+                <span class="icono-tipo"><i [class]="icono(r.tipoIncidente)" aria-hidden="true"></i></span>
                 <span class="cuerpo">
                   <strong>{{ r.tipoIncidente }}</strong>
-                  <small>{{ r.codigo }} · {{ r.fechaCreacion | date: 'dd/MM HH:mm' }} · {{ r.direccion || 'Sin dirección' }}</small>
+                  <small>{{ r.codigo }} - {{ r.fechaCreacion | date: 'dd/MM HH:mm' }} - {{ r.direccion || 'Sin dirección' }}</small>
                 </span>
                 <app-prioridad-chip [prioridad]="r.prioridad" />
                 <app-estado-chip [estado]="r.estado" />
@@ -54,7 +59,7 @@ const CADA_MS = 10_000;
           }
         </ul>
       }
-    </section>
+    </div>
   `,
 })
 export class BandejaComponent implements OnInit, OnDestroy {
@@ -73,7 +78,7 @@ export class BandejaComponent implements OnInit, OnDestroy {
       id: r.id,
       lat: r.latitud,
       lng: r.longitud,
-      titulo: `${r.tipoIncidente} — ${etiquetaEstado(r.estado)}`,
+      titulo: `${r.tipoIncidente} - ${etiquetaEstado(r.estado)}`,
       color: COLOR_PRIORIDAD[r.prioridad] ?? '#607d8b',
     })),
   );

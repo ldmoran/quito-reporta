@@ -5,7 +5,7 @@ import { EstadoReporte } from '../core/modelos';
 @Component({
   selector: 'app-estado-chip',
   standalone: true,
-  template: `<span class="chip" [class]="'chip estado-' + estado">{{ etiqueta }}</span>`,
+  template: `<span [class]="'etiqueta estado-' + estado">{{ etiqueta }}</span>`,
 })
 export class EstadoChipComponent {
   @Input({ required: true }) estado!: EstadoReporte;
@@ -18,7 +18,7 @@ export class EstadoChipComponent {
 @Component({
   selector: 'app-prioridad-chip',
   standalone: true,
-  template: `<span [class]="'chip prioridad-' + prioridad">{{ etiqueta }}</span>`,
+  template: `<span [class]="'etiqueta prioridad-' + prioridad">{{ etiqueta }}</span>`,
 })
 export class PrioridadChipComponent {
   @Input({ required: true }) prioridad!: number;

@@ -15,35 +15,47 @@ function coinciden(control: AbstractControl): ValidationErrors | null {
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <section class="tarjeta estrecha">
-      <h1>Cambiar contraseña</h1>
+    <div class="dashboard-section" style="max-width: 560px">
+      <div class="section-heading">
+        <div>
+          <h4>Cambiar contraseña</h4>
+          <p>Elija una contraseña de al menos 8 caracteres.</p>
+        </div>
+      </div>
+
       @if (auth.sesion()?.debeCambiarPassword) {
-        <p class="aviso" role="note">
-          Ingresaste con una contraseña temporal. Por seguridad debes crear una propia para continuar.
-        </p>
+        <div class="alert alert-warning" role="note">
+          <i class="fa fa-exclamation-triangle me-2" aria-hidden="true"></i>
+          Ingresó con una contraseña temporal. Por seguridad debe crear una propia para continuar.
+        </div>
       }
 
       <form [formGroup]="form" (ngSubmit)="guardar()" novalidate>
-        <label for="actual">Contraseña actual (o temporal)</label>
-        <input id="actual" type="password" formControlName="passwordActual" autocomplete="current-password" />
-
-        <label for="nueva">Contraseña nueva (mínimo 8 caracteres)</label>
-        <input id="nueva" type="password" formControlName="passwordNueva" autocomplete="new-password" />
-
-        <label for="repetir">Repite la contraseña nueva</label>
-        <input id="repetir" type="password" formControlName="repetir" autocomplete="new-password" />
-        @if (form.hasError('noCoinciden') && form.controls.repetir.dirty) {
-          <small class="error">Las contraseñas no coinciden.</small>
-        }
+        <div class="mb-3">
+          <label class="form-label" for="actual">Contraseña actual (o temporal)</label>
+          <input id="actual" type="password" class="form-control" formControlName="passwordActual" autocomplete="current-password" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="nueva">Contraseña nueva</label>
+          <input id="nueva" type="password" class="form-control" formControlName="passwordNueva" autocomplete="new-password" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="repetir">Repita la contraseña nueva</label>
+          <input id="repetir" type="password" class="form-control" formControlName="repetir" autocomplete="new-password" />
+          @if (form.hasError('noCoinciden') && form.controls.repetir.dirty) {
+            <div class="text-danger small mt-1">Las contraseñas no coinciden.</div>
+          }
+        </div>
 
         @if (error()) {
-          <p class="error" role="alert">{{ error() }}</p>
+          <div class="alert alert-danger" role="alert">{{ error() }}</div>
         }
-        <button class="primario" type="submit" [disabled]="form.invalid || cargando()">
-          {{ cargando() ? 'Guardando…' : 'Guardar contraseña' }}
+        <button class="btn btn-primary" type="submit" [disabled]="form.invalid || cargando()">
+          <i class="fa fa-save me-2" aria-hidden="true"></i>
+          {{ cargando() ? 'Guardando...' : 'Guardar contraseña' }}
         </button>
       </form>
-    </section>
+    </div>
   `,
 })
 export class CambiarPasswordComponent {

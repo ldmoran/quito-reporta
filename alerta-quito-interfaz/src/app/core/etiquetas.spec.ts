@@ -18,9 +18,9 @@ describe('etiquetas', () => {
   });
 
   it('elige un icono por tipo de incidente', () => {
-    expect(iconoTipo('Bache')).toBe('🕳️');
-    expect(iconoTipo('Robo o asalto')).toBe('🚨');
-    expect(iconoTipo('Algo nuevo')).toBe('⚠️');
+    expect(iconoTipo('Bache')).toBe('fa fa-road');
+    expect(iconoTipo('Robo o asalto')).toBe('fa fa-shield');
+    expect(iconoTipo('Algo nuevo')).toBe('fa fa-exclamation-circle');
   });
 });
 

@@ -90,7 +90,7 @@ class FlujoReportesIT {
     }
 
     String token(String usuario, String clave) throws Exception {
-        String cuerpo = login(usuario, clave).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String cuerpo = login(usuario, clave).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         return JsonPath.read(cuerpo, "$.token");
     }
 
@@ -100,7 +100,7 @@ class FlujoReportesIT {
 
     int idTipo(String token, String nombre) throws Exception {
         String cuerpo = mvc.perform(get("/api/tipos-incidente").header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         java.util.List<Integer> ids = JsonPath.read(cuerpo, "$[?(@.nombre=='" + nombre + "')].id");
         return ids.get(0);
     }
@@ -116,7 +116,7 @@ class FlujoReportesIT {
 
     long reporteNuevo(String token, String tipo) throws Exception {
         String cuerpo = crearReporte(token, idTipo(token, tipo), "-0.2000", "-78.5000")
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         return ((Number) JsonPath.read(cuerpo, "$.reporte.id")).longValue();
     }
 
@@ -150,7 +150,7 @@ class FlujoReportesIT {
                 .andExpect(jsonPath("$.reporte.entidad").value("POLICIA"))
                 .andExpect(jsonPath("$.historial.length()").value(1))
                 .andExpect(jsonPath("$.evidencias[0].tipo").value("CREACION"))
-                .andReturn().getResponse().getContentAsString();
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
 
         String codigo = JsonPath.read(cuerpo, "$.reporte.codigo");
         assertTrue(codigo.matches("RQ-\\d{4}-\\d{6}"), codigo);
@@ -176,12 +176,12 @@ class FlujoReportesIT {
     void laBandejaPoneLasEmergenciasPrimero() throws Exception {
         String tk = ciudadano();
         reporteNuevo(tk, "Bache");
-        reporteNuevo(tk, "Accidente de transito");   // AMT
-        reporteNuevo(tk, "Semaforo danado");
+        reporteNuevo(tk, "Accidente de tránsito");   // AMT
+        reporteNuevo(tk, "Semáforo dañado");
         String epmmop = token("func.epmmop", "Func123*");
 
         String cuerpo = mvc.perform(get("/api/reportes/bandeja").header("Authorization", "Bearer " + epmmop))
-                .andReturn().getResponse().getContentAsString();
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         java.util.List<Integer> prioridades = JsonPath.read(cuerpo, "$[*].prioridad");
 
         assertEquals(prioridades.stream().sorted().toList(), prioridades, "ordenada de mas a menos urgente");
@@ -189,7 +189,7 @@ class FlujoReportesIT {
 
     @Test
     void noSePuedeResolverSinFotoYSiConFoto() throws Exception {
-        long id = reporteNuevo(ciudadano(), "Semaforo danado");
+        long id = reporteNuevo(ciudadano(), "Semáforo dañado");
         String epmmop = token("func.epmmop", "Func123*");
 
         cambiarEstado(epmmop, id, "EN_ATENCION", false).andExpect(status().isOk())
@@ -252,7 +252,7 @@ class FlujoReportesIT {
         String tk = ciudadano();
         long id = reporteNuevo(tk, "Bache");
         String cuerpo = mvc.perform(get("/api/reportes/" + id).header("Authorization", "Bearer " + tk))
-                .andReturn().getResponse().getContentAsString();
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         int idEvidencia = JsonPath.read(cuerpo, "$.evidencias[0].id");
         String url = "/api/reportes/" + id + "/evidencias/" + idEvidencia + "/archivo";
         registrarCiudadano("curioso" + UUID.randomUUID().toString().substring(0, 6));
@@ -297,7 +297,7 @@ class FlujoReportesIT {
                 .andExpect(jsonPath("$.funcionario.entidadCodigo").value("EEQ"))
                 .andExpect(jsonPath("$.passwordTemporal").isNotEmpty())
                 .andExpect(jsonPath("$.correoEnviado").value(false))   // correo apagado en pruebas
-                .andReturn().getResponse().getContentAsString();
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         int idFuncionario = JsonPath.read(respuesta, "$.funcionario.id");
         String temporal = JsonPath.read(respuesta, "$.passwordTemporal");
 
@@ -324,13 +324,13 @@ class FlujoReportesIT {
                 + "@quito.ec\",\"usuario\":\"" + usuario + "\",\"idEntidad\":1,\"cargo\":\"Inspector\"}";
         String respuesta = mvc.perform(post("/api/admin/funcionarios").header("Authorization", "Bearer " + admin)
                         .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         String temporal = JsonPath.read(respuesta, "$.passwordTemporal");
 
         // 1) Entra, pero el API le avisa que debe cambiarla.
         String sesion = login(usuario, temporal).andExpect(status().isOk())
                 .andExpect(jsonPath("$.debeCambiarPassword").value(true))
-                .andReturn().getResponse().getContentAsString();
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         String tokenTemporal = JsonPath.read(sesion, "$.token");
 
         // 2) Con la clave temporal no puede usar nada mas.
@@ -343,7 +343,7 @@ class FlujoReportesIT {
         cambiarPassword(tokenTemporal, "incorrecta", "NuevaClave123*").andExpect(status().isBadRequest());
         String cambiada = cambiarPassword(tokenTemporal, temporal, "NuevaClave123*").andExpect(status().isOk())
                 .andExpect(jsonPath("$.debeCambiarPassword").value(false))
-                .andReturn().getResponse().getContentAsString();
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
 
         // 4) Con el token nuevo ya trabaja normal; la clave temporal dejo de servir.
         mvc.perform(get("/api/reportes/bandeja").header("Authorization", "Bearer " + JsonPath.read(cambiada, "$.token")))
@@ -362,7 +362,7 @@ class FlujoReportesIT {
                         .header("Authorization", "Bearer " + admin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usuario").value(usuario))
-                .andReturn().getResponse().getContentAsString();
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         String temporal = JsonPath.read(respuesta, "$.passwordTemporal");
 
         login(usuario, "Clave1234*").andExpect(status().isUnauthorized());   // la anterior ya no sirve

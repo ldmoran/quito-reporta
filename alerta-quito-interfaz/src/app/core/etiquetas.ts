@@ -31,17 +31,17 @@ export const COLOR_PRIORIDAD: Record<number, string> = {
   4: '#2e7d32',
 };
 
-/** Iconos grandes para elegir el tipo sin leer (RF-06). */
+/** Clase de icono (Font Awesome 4.7) por tipo de incidente: se elige tocando, sin leer (RF-06). */
 export function iconoTipo(nombre: string): string {
   const n = nombre.toLowerCase();
-  if (n.includes('bache')) return '🕳️';
-  if (n.includes('semaforo') || n.includes('semáforo')) return '🚦';
-  if (n.includes('senal') || n.includes('señal')) return '🛑';
-  if (n.includes('accidente')) return '🚗';
-  if (n.includes('alumbrado')) return '💡';
-  if (n.includes('robo') || n.includes('asalto')) return '🚨';
-  if (n.includes('arbol') || n.includes('árbol')) return '🌳';
-  return '⚠️';
+  if (n.includes('bache')) return 'fa fa-road';
+  if (n.includes('semaforo') || n.includes('semáforo')) return 'fa fa-exclamation-triangle';
+  if (n.includes('senal') || n.includes('señal')) return 'fa fa-ban';
+  if (n.includes('accidente')) return 'fa fa-car';
+  if (n.includes('alumbrado')) return 'fa fa-lightbulb-o';
+  if (n.includes('robo') || n.includes('asalto')) return 'fa fa-shield';
+  if (n.includes('arbol') || n.includes('árbol')) return 'fa fa-tree';
+  return 'fa fa-exclamation-circle';
 }
 
 export function etiquetaEstado(estado: string): string {

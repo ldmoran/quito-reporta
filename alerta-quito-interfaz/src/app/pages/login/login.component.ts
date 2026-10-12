@@ -2,35 +2,62 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { MARCA } from '../../core/marca';
 import { mensajeDeError } from '../../core/mensajes';
+import { FondoAccesoComponent } from '../../shared/fondo-acceso.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, FondoAccesoComponent],
   template: `
-    <section class="tarjeta estrecha">
+    <app-fondo-acceso>
       <h1>Iniciar sesión</h1>
-      <p class="suave">Reporta incidentes viales y de seguridad en Quito, sin llamar por teléfono.</p>
+      <p>Bienvenido, ingrese sus credenciales para continuar.</p>
 
       <form [formGroup]="form" (ngSubmit)="entrar()" novalidate>
-        <label for="usuario">Usuario</label>
-        <input id="usuario" formControlName="usuario" autocomplete="username" />
+        <div class="input-group login-input">
+          <span class="input-group-text"><i class="fa fa-user" aria-hidden="true"></i></span>
+          <label for="usuario" class="visually-hidden">Usuario</label>
+          <input
+            id="usuario"
+            type="text"
+            class="form-control"
+            placeholder="Usuario"
+            formControlName="usuario"
+            autocomplete="username"
+          />
+        </div>
 
-        <label for="password">Contraseña</label>
-        <input id="password" type="password" formControlName="password" autocomplete="current-password" />
+        <div class="input-group login-input">
+          <span class="input-group-text"><i class="fa fa-key" aria-hidden="true"></i></span>
+          <label for="password" class="visually-hidden">Clave</label>
+          <input
+            id="password"
+            type="password"
+            class="form-control"
+            placeholder="Clave"
+            formControlName="password"
+            autocomplete="current-password"
+          />
+        </div>
+
+        <button type="submit" class="btn btn-primary login-btn" [disabled]="form.invalid || cargando()">
+          <i class="fa fa-sign-in me-2" aria-hidden="true"></i>
+          {{ cargando() ? 'Ingresando...' : 'Ingresar' }}
+        </button>
+
+        <div class="login-help">
+          ¿Olvidó su contraseña?<br />
+          {{ ayuda }}<br />
+          <a routerLink="/registro">Crear cuenta de ciudadano</a>
+        </div>
 
         @if (error()) {
-          <p class="error" role="alert">{{ error() }}</p>
+          <div class="alert alert-danger text-center mt-4" role="alert">{{ error() }}</div>
         }
-
-        <button class="primario" type="submit" [disabled]="form.invalid || cargando()">
-          {{ cargando() ? 'Ingresando…' : 'Ingresar' }}
-        </button>
       </form>
-
-      <p class="suave">¿Eres ciudadano y aún no tienes cuenta? <a routerLink="/registro">Regístrate</a></p>
-    </section>
+    </app-fondo-acceso>
   `,
 })
 export class LoginComponent {
@@ -38,6 +65,7 @@ export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
+  readonly ayuda = MARCA.ayudaContrasena;
   readonly form = this.fb.nonNullable.group({
     usuario: ['', Validators.required],
     password: ['', Validators.required],
