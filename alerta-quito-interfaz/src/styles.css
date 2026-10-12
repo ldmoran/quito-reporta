@@ -371,7 +371,7 @@ h4 { font-size: 1.05rem; }
 /* ---------- nuevo reporte ---------- */
 .rejilla-tipos {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 10px;
 }
 .tipo-opcion {
@@ -647,4 +647,121 @@ h4 { font-size: 1.05rem; }
   .login-form { width: 100%; }
   .login-btn { width: 100%; }
   .fila-barra { grid-template-columns: 110px 1fr 36px; }
+}
+
+/* =========================================================
+   CELULARES Y TABLETS PEQUENAS
+   ========================================================= */
+@media (max-width: 768px) {
+  /* 16 px evita que iOS haga zoom al enfocar un campo */
+  input,
+  select,
+  textarea,
+  .form-control,
+  .form-select {
+    font-size: 16px;
+  }
+
+  /* objetivos tactiles comodos (minimo ~44 px) */
+  .btn,
+  .btn-sm,
+  .hamburger-btn,
+  .nav-link {
+    min-height: 44px;
+  }
+  .btn-sm {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .content-area {
+    padding: 10px;
+  }
+  .dashboard-section {
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .section-heading {
+    flex-wrap: wrap;
+  }
+  .section-heading .btn {
+    width: 100%;
+  }
+
+  /* tipos de incidente: 2 por fila, mas compactos */
+  .rejilla-tipos {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .tipo-opcion {
+    padding: 12px 6px;
+  }
+  .tipo-opcion i {
+    font-size: 1.5rem;
+  }
+
+  /* listado de reportes: la etiqueta pasa debajo */
+  .reporte-item {
+    flex-wrap: wrap;
+  }
+  .reporte-item .cuerpo {
+    flex: 1 1 calc(100% - 70px);
+  }
+
+  .fotos img {
+    max-width: 100%;
+  }
+  .fotos figure {
+    width: 100%;
+  }
+
+  /* pestanas de administracion con desplazamiento horizontal si no caben */
+  .nav-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+  }
+
+  /* tablas convertidas en tarjetas: cada fila es una tarjeta con etiquetas */
+  .tabla-apilada thead {
+    display: none;
+  }
+  .tabla-apilada,
+  .tabla-apilada tbody,
+  .tabla-apilada tr,
+  .tabla-apilada td {
+    display: block;
+    width: 100%;
+  }
+  .tabla-apilada tr {
+    border: 1px solid #e3e9ef;
+    border-radius: 12px;
+    padding: 6px 12px;
+    margin-bottom: 10px;
+    background: #ffffff;
+  }
+  .tabla-apilada td {
+    border: none;
+    padding: 6px 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: right;
+  }
+  .tabla-apilada td[data-label]::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #3c4650;
+    text-align: left;
+    flex: 0 0 38%;
+  }
+  .tabla-apilada td.acciones-fila {
+    flex-wrap: wrap;
+    justify-content: stretch;
+  }
+  .tabla-apilada td.acciones-fila .btn {
+    flex: 1 1 100%;
+    margin: 0 0 6px !important;
+  }
 }

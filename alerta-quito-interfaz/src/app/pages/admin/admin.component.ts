@@ -117,7 +117,7 @@ type Pestana = 'funcionarios' | 'estadisticas' | 'usuarios';
 
           <h4 class="subtitulo">Funcionarios registrados</h4>
           <div class="custom-table">
-            <table class="table align-middle">
+            <table class="table align-middle tabla-apilada">
               <thead>
                 <tr>
                   <th>Nombre</th>
@@ -131,17 +131,17 @@ type Pestana = 'funcionarios' | 'estadisticas' | 'usuarios';
               <tbody>
                 @for (f of funcionarios(); track f.id) {
                   <tr [class.inactivo]="f.estado === 'I'">
-                    <td>
-                      {{ f.nombreCompleto }}<br /><small class="text-muted">{{ f.correo }}</small>
+                    <td data-label="Nombre">
+                      <span>{{ f.nombreCompleto }}<br /><small class="text-muted">{{ f.correo }}</small></span>
                     </td>
-                    <td>{{ f.usuario }}</td>
-                    <td>{{ f.entidadCodigo }}</td>
-                    <td>{{ f.cargo }}</td>
-                    <td>
-                      {{ f.estado === 'A' ? 'Activo' : 'Dado de baja' }}<br />
-                      <small class="text-muted">{{ f.fechaDesignacion | date: 'dd/MM/yyyy' }}</small>
+                    <td data-label="Usuario">{{ f.usuario }}</td>
+                    <td data-label="Entidad">{{ f.entidadCodigo }}</td>
+                    <td data-label="Cargo">{{ f.cargo }}</td>
+                    <td data-label="Estado">
+                      <span>{{ f.estado === 'A' ? 'Activo' : 'Dado de baja' }}<br />
+                      <small class="text-muted">{{ f.fechaDesignacion | date: 'dd/MM/yyyy' }}</small></span>
                     </td>
-                    <td class="text-end text-nowrap">
+                    <td class="text-end text-nowrap acciones-fila">
                       @if (f.estado === 'A') {
                         <button type="button" class="btn btn-secondary btn-sm me-1" (click)="restablecer(f.usuario)">
                           <i class="fa fa-refresh me-1" aria-hidden="true"></i>Restablecer clave

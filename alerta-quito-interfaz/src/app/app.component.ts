@@ -101,6 +101,7 @@ export class AppComponent {
   readonly auth = inject(AuthService);
   readonly marca = MARCA;
   readonly menuOculto = signal(this.leerMenuOculto());
+  private eraGrande = typeof window === 'undefined' || window.innerWidth >= 992;
 
   etiquetaPerfil(): string {
     if (this.auth.tienePerfil('ADMINI')) return 'Administrador';
@@ -122,9 +123,15 @@ export class AppComponent {
     if (window.innerWidth < 992) this.menuOculto.set(true);
   }
 
+  /**
+   * Solo reacciona al pasar de pantalla grande a celular. En un telefono el evento resize tambien
+   * salta al mostrar u ocultar la barra del navegador y no debe cerrar el menu a mitad de uso.
+   */
   @HostListener('window:resize')
   alCambiarTamano(): void {
-    if (window.innerWidth < 992 && !this.menuOculto()) this.menuOculto.set(true);
+    const esGrande = window.innerWidth >= 992;
+    if (this.eraGrande && !esGrande) this.menuOculto.set(true);
+    this.eraGrande = esGrande;
   }
 
   private leerMenuOculto(): boolean {

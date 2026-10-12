@@ -90,4 +90,17 @@ describe('AppComponent', () => {
 
     expect(html.querySelector('.sidebar')!.classList.contains('oculta')).toBe(!estabaOculto);
   });
+
+  it('un resize en celular (barra del navegador) no cierra el menú abierto', () => {
+    guardarSesion(['CIUDAD']);
+    configurar();
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const app = fixture.componentInstance;
+    app.menuOculto.set(false);
+
+    window.dispatchEvent(new Event('resize'));
+
+    expect(app.menuOculto()).toBeFalse();
+  });
 });
