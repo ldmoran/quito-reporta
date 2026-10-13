@@ -1,9 +1,11 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { AlertasService, CampoFormulario, Valores } from '../../core/alertas.service';
 import { ETIQUETA_PRIORIDAD, iconoTipo } from '../../core/etiquetas';
 import { mensajeDeError } from '../../core/mensajes';
-import { EntidadAdmin, TipoIncidenteAdmin } from '../../core/modelos';
+import { EntidadAdmin, FormTipoIncidente, TipoIncidenteAdmin } from '../../core/modelos';
 import { PrioridadChipComponent } from '../../shared/insignias.component';
 
 type FiltroEstado = 'TODOS' | 'A' | 'I';
@@ -15,7 +17,7 @@ type FiltroEstado = 'TODOS' | 'A' | 'I';
 @Component({
   selector: 'app-tipos-incidente',
   standalone: true,
-  imports: [FormsModule, ReactiveFormsModule, PrioridadChipComponent],
+  imports: [FormsModule, PrioridadChipComponent],
   template: `
     <div class="dashboard-section">
       <div class="section-heading">
@@ -23,66 +25,13 @@ type FiltroEstado = 'TODOS' | 'A' | 'I';
           <h4>Tipos de incidente</h4>
           <p>Lo que el ciudadano puede reportar, a qué entidad se deriva y con qué prioridad. Nada se borra: se desactivan.</p>
         </div>
-        @if (!formAbierto()) {
-          <button type="button" class="btn btn-primary btn-sm" (click)="abrirNuevo()">
-            <i class="fa fa-plus-circle me-1" aria-hidden="true"></i> Nuevo tipo
-          </button>
-        }
+        <button type="button" class="btn btn-primary btn-sm" (click)="nuevo()">
+          <i class="fa fa-plus-circle me-1" aria-hidden="true"></i> Nuevo tipo
+        </button>
       </div>
 
-      @if (mensaje()) {
-        <div class="alert alert-success py-2" role="status">{{ mensaje() }}</div>
-      }
-      @if (error()) {
-        <div class="alert alert-danger py-2" role="alert">{{ error() }}</div>
-      }
-
-      @if (formAbierto()) {
-        <div class="panel-formulario">
-          <h4 class="subtitulo mt-0">{{ editandoId() ? 'Editar tipo de incidente' : 'Nuevo tipo de incidente' }}</h4>
-          <form [formGroup]="form" (ngSubmit)="guardar()" novalidate>
-            <div class="row g-3">
-              <div class="col-md-5">
-                <label class="form-label" for="t-nombre">Nombre</label>
-                <input id="t-nombre" class="form-control" formControlName="nombre" maxlength="100" />
-              </div>
-              <div class="col-md-4">
-                <label class="form-label" for="t-entidad">Entidad que lo atiende</label>
-                <select id="t-entidad" class="form-select" formControlName="idEntidad">
-                  <option [ngValue]="0" disabled>Seleccione...</option>
-                  @for (e of entidadesActivas(); track e.id) {
-                    <option [ngValue]="e.id">{{ e.codigo }} - {{ e.nombre }}</option>
-                  }
-                </select>
-                @if (bloqueaEntidad()) {
-                  <div class="form-text">Ya tiene reportes: para pasarlo a otra entidad cree un tipo nuevo y desactive este.</div>
-                }
-              </div>
-              <div class="col-md-3">
-                <label class="form-label" for="t-prioridad">Prioridad</label>
-                <select id="t-prioridad" class="form-select" formControlName="prioridadBase">
-                  @for (p of prioridades; track p.valor) {
-                    <option [ngValue]="p.valor">{{ p.valor }} - {{ p.texto }}</option>
-                  }
-                </select>
-              </div>
-              <div class="col-12">
-                <div class="form-check">
-                  <input id="t-emergencia" class="form-check-input" type="checkbox" formControlName="esEmergencia" (change)="alCambiarEmergencia()" />
-                  <label class="form-check-label" for="t-emergencia">
-                    Es una emergencia (se muestra con aviso al ciudadano y pasa primero en la bandeja; implica prioridad 1)
-                  </label>
-                </div>
-              </div>
-            </div>
-            <div class="mt-3 d-flex gap-2">
-              <button class="btn btn-primary" type="submit" [disabled]="form.invalid || guardando()">
-                <i class="fa fa-save me-2" aria-hidden="true"></i>{{ guardando() ? 'Guardando...' : 'Guardar' }}
-              </button>
-              <button class="btn btn-secondary" type="button" (click)="cerrarForm()">Cancelar</button>
-            </div>
-          </form>
-        </div>
+      @if (errorCarga()) {
+        <div class="alert alert-danger" role="alert">{{ errorCarga() }}</div>
       }
 
       <div class="row g-2 mb-3 align-items-end">
@@ -159,23 +108,16 @@ type FiltroEstado = 'TODOS' | 'A' | 'I';
 })
 export class TiposIncidenteComponent implements OnInit {
   private readonly api = inject(ApiService);
-  private readonly fb = inject(FormBuilder);
+  private readonly alertas = inject(AlertasService);
 
   readonly tipos = signal<TipoIncidenteAdmin[]>([]);
   readonly entidades = signal<EntidadAdmin[]>([]);
   readonly busqueda = signal('');
   readonly estado = signal<FiltroEstado>('TODOS');
   readonly entidadFiltro = signal(0);
-  readonly formAbierto = signal(false);
-  readonly editandoId = signal<number | null>(null);
-  readonly bloqueaEntidad = signal(false);
-  readonly guardando = signal(false);
-  readonly error = signal('');
-  readonly mensaje = signal('');
+  readonly errorCarga = signal('');
 
   readonly icono = iconoTipo;
-  readonly prioridades = [1, 2, 3, 4].map((valor) => ({ valor, texto: ETIQUETA_PRIORIDAD[valor] }));
-
   readonly entidadesActivas = computed(() => this.entidades().filter((e) => e.estado === 'A'));
   readonly visibles = computed(() => {
     const texto = this.busqueda().trim().toLowerCase();
@@ -186,88 +128,93 @@ export class TiposIncidenteComponent implements OnInit {
     });
   });
 
-  readonly form = this.fb.nonNullable.group({
-    nombre: ['', [Validators.required, Validators.maxLength(100)]],
-    idEntidad: [0, [Validators.required, Validators.min(1)]],
-    prioridadBase: [3, [Validators.required, Validators.min(1), Validators.max(4)]],
-    esEmergencia: [false],
-  });
-
   ngOnInit(): void {
     this.cargar();
   }
 
-  abrirNuevo(): void {
-    this.limpiar();
-    this.editandoId.set(null);
-    this.bloqueaEntidad.set(false);
-    this.form.reset({ nombre: '', idEntidad: 0, prioridadBase: 3, esEmergencia: false });
-    this.form.controls.idEntidad.enable();
-    this.formAbierto.set(true);
-  }
-
-  editar(t: TipoIncidenteAdmin): void {
-    this.limpiar();
-    this.editandoId.set(t.id);
-    this.bloqueaEntidad.set(t.reportes > 0);
-    this.form.reset({ nombre: t.nombre, idEntidad: t.idEntidad, prioridadBase: t.prioridadBase, esEmergencia: t.esEmergencia });
-    if (t.reportes > 0) this.form.controls.idEntidad.disable();
-    else this.form.controls.idEntidad.enable();
-    this.formAbierto.set(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  cerrarForm(): void {
-    this.formAbierto.set(false);
-    this.editandoId.set(null);
-  }
-
-  /** Una emergencia siempre es prioridad 1: el servidor lo exige y aquí se aplica solo. */
-  alCambiarEmergencia(): void {
-    if (this.form.controls.esEmergencia.value) this.form.controls.prioridadBase.setValue(1);
-  }
-
-  guardar(): void {
-    if (this.form.invalid) return;
-    this.guardando.set(true);
-    this.limpiar();
-    const datos = this.form.getRawValue();
-    const id = this.editandoId();
-    const llamada = id === null ? this.api.crearTipo(datos) : this.api.actualizarTipo(id, datos);
-    llamada.subscribe({
-      next: (t) => {
-        this.mensaje.set(id === null ? `El tipo "${t.nombre}" fue creado.` : `El tipo "${t.nombre}" fue actualizado.`);
-        this.cerrarForm();
-        this.guardando.set(false);
-        this.cargar();
-      },
-      error: (err) => {
-        this.error.set(mensajeDeError(err));
-        this.guardando.set(false);
-      },
+  async nuevo(): Promise<void> {
+    const t = await this.alertas.formulario({
+      titulo: 'Nuevo tipo de incidente',
+      confirmar: 'Crear tipo',
+      campos: this.campos(),
+      alCambiar: alCambiarEmergencia,
+      mensajeDeError,
+      guardar: (v) => firstValueFrom(this.api.crearTipo(this.aDatos(v))),
     });
+    if (!t) return;
+    this.alertas.exito(`El tipo "${t.nombre}" fue creado.`);
+    this.cargar();
   }
 
-  cambiarEstado(t: TipoIncidenteAdmin, activo: boolean): void {
-    const aviso = activo ? '' : ' Dejará de aparecer en el formulario del ciudadano; los reportes ya enviados no cambian.';
-    if (!confirm(`¿Desea ${activo ? 'activar' : 'desactivar'} "${t.nombre}"?${aviso}`)) return;
-    this.limpiar();
-    this.api.estadoTipo(t.id, activo).subscribe({
-      next: () => {
-        this.mensaje.set(`El tipo "${t.nombre}" fue ${activo ? 'activado' : 'desactivado'}.`);
-        this.cargar();
-      },
-      error: (err) => this.error.set(mensajeDeError(err)),
+  async editar(tipo: TipoIncidenteAdmin): Promise<void> {
+    const t = await this.alertas.formulario({
+      titulo: 'Editar tipo de incidente',
+      confirmar: 'Guardar cambios',
+      campos: this.campos(tipo),
+      alCambiar: alCambiarEmergencia,
+      mensajeDeError,
+      guardar: (v) => firstValueFrom(this.api.actualizarTipo(tipo.id, this.aDatos(v, tipo))),
     });
+    if (!t) return;
+    this.alertas.exito(`El tipo "${t.nombre}" fue actualizado.`);
+    this.cargar();
+  }
+
+  async cambiarEstado(t: TipoIncidenteAdmin, activo: boolean): Promise<void> {
+    const ok = await this.alertas.confirmar({
+      titulo: `¿${activo ? 'Activar' : 'Desactivar'} "${t.nombre}"?`,
+      texto: activo ? undefined : 'Dejará de aparecer en el formulario del ciudadano. Los reportes ya enviados no cambian.',
+      boton: activo ? 'Sí, activar' : 'Sí, desactivar',
+      peligro: !activo,
+    });
+    if (!ok) return;
+    try {
+      await firstValueFrom(this.api.estadoTipo(t.id, activo));
+      this.alertas.exito(`El tipo "${t.nombre}" fue ${activo ? 'activado' : 'desactivado'}.`);
+      this.cargar();
+    } catch (e) {
+      await this.alertas.error(mensajeDeError(e));
+    }
+  }
+
+  /** Si el tipo ya tiene reportes la entidad no se puede cambiar, así que se toma del tipo original. */
+  private aDatos(v: Valores, original?: TipoIncidenteAdmin): FormTipoIncidente {
+    return {
+      nombre: String(v['nombre']),
+      idEntidad: original && original.reportes > 0 ? original.idEntidad : Number(v['idEntidad']),
+      prioridadBase: Number(v['prioridadBase']),
+      esEmergencia: v['esEmergencia'] === true,
+    };
+  }
+
+  private campos(t?: TipoIncidenteAdmin): CampoFormulario[] {
+    const bloqueada = !!t && t.reportes > 0;
+    return [
+      { nombre: 'nombre', etiqueta: 'Nombre', requerido: true, maxlength: 100, valor: t?.nombre ?? '', columnas: 12 },
+      {
+        nombre: 'idEntidad', etiqueta: 'Entidad que lo atiende', tipo: 'select', requerido: true, columnas: 7, valor: t?.idEntidad ?? '',
+        deshabilitado: bloqueada,
+        ayuda: bloqueada ? 'Ya tiene reportes: para pasarlo a otra entidad cree un tipo nuevo y desactive este.' : undefined,
+        opciones: [{ valor: '', texto: 'Seleccione...' }, ...this.entidadesActivas().map((e) => ({ valor: e.id, texto: `${e.codigo} - ${e.nombre}` }))],
+      },
+      {
+        nombre: 'prioridadBase', etiqueta: 'Prioridad', tipo: 'select', requerido: true, columnas: 5, valor: t?.prioridadBase ?? 3,
+        opciones: [1, 2, 3, 4].map((valor) => ({ valor, texto: `${valor} - ${ETIQUETA_PRIORIDAD[valor]}` })),
+      },
+      {
+        nombre: 'esEmergencia', etiqueta: 'Es una emergencia', tipo: 'casilla', valor: t?.esEmergencia ?? false,
+        ayuda: 'Se muestra con aviso al ciudadano y pasa primero en la bandeja; implica prioridad 1 (crítica).',
+      },
+    ];
   }
 
   private cargar(): void {
-    this.api.tiposAdmin().subscribe({ next: (t) => this.tipos.set(t), error: (e) => this.error.set(mensajeDeError(e)) });
-    this.api.entidadesAdmin().subscribe({ next: (e) => this.entidades.set(e), error: (e) => this.error.set(mensajeDeError(e)) });
+    this.api.tiposAdmin().subscribe({ next: (t) => this.tipos.set(t), error: (e) => this.errorCarga.set(mensajeDeError(e)) });
+    this.api.entidadesAdmin().subscribe({ next: (e) => this.entidades.set(e), error: (e) => this.errorCarga.set(mensajeDeError(e)) });
   }
+}
 
-  private limpiar(): void {
-    this.error.set('');
-    this.mensaje.set('');
-  }
+/** Una emergencia siempre es prioridad 1: el servidor lo exige y aquí se aplica solo al marcar la casilla. */
+export function alCambiarEmergencia(nombre: string, valores: Valores, asignar: (campo: string, valor: string | number | boolean) => void): void {
+  if (nombre === 'esEmergencia' && valores['esEmergencia'] === true) asignar('prioridadBase', 1);
 }

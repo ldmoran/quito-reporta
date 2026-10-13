@@ -1,16 +1,11 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { AlertasService, CampoFormulario } from '../../core/alertas.service';
 import { mensajeDeError } from '../../core/mensajes';
 import { Entidad, Funcionario } from '../../core/modelos';
-import { CredencialTemporalComponent } from '../../shared/credencial-temporal.component';
-
-interface Entregable {
-  usuario: string;
-  clave: string;
-  correoEnviado: boolean;
-}
 
 type FiltroEstado = 'TODOS' | 'A' | 'I';
 
@@ -18,7 +13,7 @@ type FiltroEstado = 'TODOS' | 'A' | 'I';
 @Component({
   selector: 'app-funcionarios',
   standalone: true,
-  imports: [DatePipe, FormsModule, ReactiveFormsModule, CredencialTemporalComponent],
+  imports: [DatePipe, FormsModule],
   template: `
     <div class="dashboard-section">
       <div class="section-heading">
@@ -26,75 +21,10 @@ type FiltroEstado = 'TODOS' | 'A' | 'I';
           <h4>Funcionarios</h4>
           <p>Personas designadas por cada entidad de respuesta para atender sus reportes.</p>
         </div>
-        @if (!formAbierto()) {
-          <button type="button" class="btn btn-primary btn-sm" (click)="abrirNuevo()">
-            <i class="fa fa-plus-circle me-1" aria-hidden="true"></i> Nuevo funcionario
-          </button>
-        }
+        <button type="button" class="btn btn-primary btn-sm" (click)="nuevo()">
+          <i class="fa fa-plus-circle me-1" aria-hidden="true"></i> Nuevo funcionario
+        </button>
       </div>
-
-      @if (mensaje()) {
-        <div class="alert alert-success py-2" role="status">{{ mensaje() }}</div>
-      }
-      @if (error()) {
-        <div class="alert alert-danger py-2" role="alert">{{ error() }}</div>
-      }
-      @if (entregable(); as c) {
-        <app-credencial-temporal [usuario]="c.usuario" [clave]="c.clave" [correoEnviado]="c.correoEnviado" (cerrar)="entregable.set(null)" />
-      }
-
-      @if (formAbierto()) {
-        <div class="panel-formulario">
-          <h4 class="subtitulo mt-0">{{ editandoId() ? 'Editar funcionario' : 'Nuevo funcionario' }}</h4>
-          <form [formGroup]="form" (ngSubmit)="guardar()" novalidate>
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label" for="f-nombre">Nombre completo</label>
-                <input id="f-nombre" class="form-control" formControlName="nombreCompleto" />
-              </div>
-              <div class="col-md-3">
-                <label class="form-label" for="f-cedula">Cédula</label>
-                <input id="f-cedula" class="form-control" formControlName="cedula" inputmode="numeric" maxlength="13" />
-              </div>
-              <div class="col-md-3">
-                <label class="form-label" for="f-usuario">Usuario</label>
-                <input id="f-usuario" class="form-control" formControlName="usuario" />
-                @if (editandoId()) {
-                  <div class="form-text">El usuario no se puede cambiar.</div>
-                }
-              </div>
-              <div class="col-md-5">
-                <label class="form-label" for="f-correo">Correo</label>
-                <input id="f-correo" type="email" class="form-control" formControlName="correo" />
-              </div>
-              <div class="col-md-4">
-                <label class="form-label" for="f-entidad">Entidad</label>
-                <select id="f-entidad" class="form-select" formControlName="idEntidad">
-                  <option [ngValue]="0" disabled>Seleccione...</option>
-                  @for (e of entidades(); track e.id) {
-                    <option [ngValue]="e.id">{{ e.codigo }} - {{ e.nombre }}</option>
-                  }
-                </select>
-              </div>
-              <div class="col-md-3">
-                <label class="form-label" for="f-cargo">Cargo</label>
-                <input id="f-cargo" class="form-control" formControlName="cargo" />
-              </div>
-            </div>
-            @if (!editandoId()) {
-              <p class="text-muted mt-3 mb-0">
-                La contraseña la genera el sistema y se envía al correo. El funcionario deberá cambiarla al ingresar.
-              </p>
-            }
-            <div class="mt-3 d-flex gap-2">
-              <button class="btn btn-primary" type="submit" [disabled]="form.invalid || guardando()">
-                <i class="fa fa-save me-2" aria-hidden="true"></i>{{ guardando() ? 'Guardando...' : editandoId() ? 'Guardar cambios' : 'Crear funcionario' }}
-              </button>
-              <button class="btn btn-secondary" type="button" (click)="cerrarForm()">Cancelar</button>
-            </div>
-          </form>
-        </div>
-      }
 
       <div class="row g-2 mb-3 align-items-end">
         <div class="col-md-5">
@@ -111,6 +41,10 @@ type FiltroEstado = 'TODOS' | 'A' | 'I';
         </div>
         <div class="col-auto text-muted small pb-2">{{ visibles().length }} de {{ funcionarios().length }}</div>
       </div>
+
+      @if (errorCarga()) {
+        <div class="alert alert-danger" role="alert">{{ errorCarga() }}</div>
+      }
 
       <div class="custom-table">
         <table class="table align-middle tabla-apilada">
@@ -168,18 +102,13 @@ type FiltroEstado = 'TODOS' | 'A' | 'I';
 })
 export class FuncionariosComponent implements OnInit {
   private readonly api = inject(ApiService);
-  private readonly fb = inject(FormBuilder);
+  private readonly alertas = inject(AlertasService);
 
   readonly funcionarios = signal<Funcionario[]>([]);
   readonly entidades = signal<Entidad[]>([]);
   readonly busqueda = signal('');
   readonly estado = signal<FiltroEstado>('TODOS');
-  readonly formAbierto = signal(false);
-  readonly editandoId = signal<number | null>(null);
-  readonly entregable = signal<Entregable | null>(null);
-  readonly error = signal('');
-  readonly mensaje = signal('');
-  readonly guardando = signal(false);
+  readonly errorCarga = signal('');
 
   readonly visibles = computed(() => {
     const texto = this.busqueda().trim().toLowerCase();
@@ -190,127 +119,127 @@ export class FuncionariosComponent implements OnInit {
     });
   });
 
-  readonly form = this.fb.nonNullable.group({
-    nombreCompleto: ['', [Validators.required, Validators.maxLength(150)]],
-    cedula: ['', [Validators.required, Validators.pattern(/^\d{10,13}$/)]],
-    correo: ['', [Validators.required, Validators.email]],
-    usuario: ['', [Validators.required, Validators.pattern(/^[A-Za-z0-9._-]{4,50}$/)]],
-    idEntidad: [0, [Validators.required, Validators.min(1)]],
-    cargo: [''],
-  });
-
   ngOnInit(): void {
     this.cargar();
-    this.api.entidades().subscribe({ next: (e) => this.entidades.set(e), error: (e) => this.fallo(e) });
+    this.api.entidades().subscribe({ next: (e) => this.entidades.set(e), error: (e) => this.errorCarga.set(mensajeDeError(e)) });
   }
 
-  abrirNuevo(): void {
-    this.limpiar();
-    this.editandoId.set(null);
-    this.form.reset({ nombreCompleto: '', cedula: '', correo: '', usuario: '', idEntidad: 0, cargo: '' });
-    this.form.controls.usuario.enable();
-    this.formAbierto.set(true);
-  }
-
-  editar(f: Funcionario): void {
-    this.limpiar();
-    this.editandoId.set(f.id);
-    this.form.reset({
-      nombreCompleto: f.nombreCompleto,
-      cedula: f.cedula ?? '',
-      correo: f.correo,
-      usuario: f.usuario,
-      idEntidad: f.idEntidad,
-      cargo: f.cargo ?? '',
+  async nuevo(): Promise<void> {
+    const resultado = await this.alertas.formulario({
+      titulo: 'Nuevo funcionario',
+      subtitulo: 'La contraseña la genera el sistema y se envía al correo. El funcionario deberá cambiarla al ingresar.',
+      confirmar: 'Crear funcionario',
+      campos: this.campos(),
+      mensajeDeError,
+      guardar: (v) =>
+        firstValueFrom(
+          this.api.registrarFuncionario({
+            nombreCompleto: String(v['nombreCompleto']),
+            cedula: String(v['cedula']),
+            correo: String(v['correo']),
+            usuario: String(v['usuario']),
+            idEntidad: Number(v['idEntidad']),
+            cargo: String(v['cargo']),
+          }),
+        ),
     });
-    this.form.controls.usuario.disable();
-    this.formAbierto.set(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!resultado) return;
+    this.cargar();
+    await this.alertas.credencial({
+      usuario: resultado.funcionario.usuario,
+      clave: resultado.passwordTemporal,
+      correoEnviado: resultado.correoEnviado,
+    });
   }
 
-  cerrarForm(): void {
-    this.formAbierto.set(false);
-    this.editandoId.set(null);
+  async editar(f: Funcionario): Promise<void> {
+    const resultado = await this.alertas.formulario({
+      titulo: 'Editar funcionario',
+      confirmar: 'Guardar cambios',
+      campos: this.campos(f),
+      mensajeDeError,
+      guardar: (v) =>
+        firstValueFrom(
+          this.api.actualizarFuncionario(f.id, {
+            nombreCompleto: String(v['nombreCompleto']),
+            cedula: String(v['cedula']),
+            correo: String(v['correo']),
+            idEntidad: Number(v['idEntidad']),
+            cargo: String(v['cargo']),
+          }),
+        ),
+    });
+    if (!resultado) return;
+    this.alertas.exito(`Los datos de ${resultado.nombreCompleto} se actualizaron.`);
+    this.cargar();
   }
 
-  guardar(): void {
-    if (this.form.invalid) return;
-    this.guardando.set(true);
-    this.limpiar();
-    const v = this.form.getRawValue();
-    const id = this.editandoId();
+  async darDeBaja(f: Funcionario): Promise<void> {
+    const ok = await this.alertas.confirmar({
+      titulo: `¿Dar de baja a ${f.nombreCompleto}?`,
+      texto: 'Ya no podrá ingresar al sistema. Podrá volver a darlo de alta cuando quiera.',
+      boton: 'Sí, dar de baja',
+      peligro: true,
+    });
+    if (ok) await this.cambiarEstado(f, false, `${f.nombreCompleto} fue dado de baja.`);
+  }
 
-    if (id !== null) {
-      this.api.actualizarFuncionario(id, { nombreCompleto: v.nombreCompleto, cedula: v.cedula, correo: v.correo, idEntidad: v.idEntidad, cargo: v.cargo }).subscribe({
-        next: (f) => {
-          this.mensaje.set(`Los datos de ${f.nombreCompleto} se actualizaron.`);
-          this.cerrarForm();
-          this.guardando.set(false);
-          this.cargar();
-        },
-        error: (e) => this.terminarConError(e),
-      });
-      return;
+  async darDeAlta(f: Funcionario): Promise<void> {
+    const ok = await this.alertas.confirmar({
+      titulo: `¿Dar de alta nuevamente a ${f.nombreCompleto}?`,
+      texto: 'Conserva su usuario y contraseña. Si no la recuerda, restablezca la clave.',
+      boton: 'Sí, dar de alta',
+    });
+    if (ok) await this.cambiarEstado(f, true, `${f.nombreCompleto} fue dado de alta de nuevo.`);
+  }
+
+  async restablecer(f: Funcionario): Promise<void> {
+    const ok = await this.alertas.confirmar({
+      titulo: `¿Restablecer la clave de ${f.usuario}?`,
+      texto: 'Se generará una contraseña temporal nueva y deberá cambiarla al ingresar.',
+      boton: 'Sí, restablecer',
+    });
+    if (!ok) return;
+    try {
+      const r = await firstValueFrom(this.api.restablecerPassword(f.usuario));
+      await this.alertas.credencial({ usuario: r.usuario, clave: r.passwordTemporal, correoEnviado: r.correoEnviado });
+    } catch (e) {
+      await this.alertas.error(mensajeDeError(e));
     }
-    this.api.registrarFuncionario(v).subscribe({
-      next: (r) => {
-        this.entregable.set({ usuario: r.funcionario.usuario, clave: r.passwordTemporal, correoEnviado: r.correoEnviado });
-        this.cerrarForm();
-        this.guardando.set(false);
-        this.cargar();
-      },
-      error: (e) => this.terminarConError(e),
-    });
   }
 
-  darDeBaja(f: Funcionario): void {
-    if (!confirm(`¿Dar de baja a ${f.nombreCompleto}? Ya no podrá ingresar al sistema. Podrá darlo de alta de nuevo.`)) return;
-    this.limpiar();
-    this.api.estadoFuncionario(f.id, false).subscribe({
-      next: () => {
-        this.mensaje.set(`${f.nombreCompleto} fue dado de baja.`);
-        this.cargar();
-      },
-      error: (e) => this.fallo(e),
-    });
+  private async cambiarEstado(f: Funcionario, activo: boolean, mensaje: string): Promise<void> {
+    try {
+      await firstValueFrom(this.api.estadoFuncionario(f.id, activo));
+      this.alertas.exito(mensaje);
+      this.cargar();
+    } catch (e) {
+      await this.alertas.error(mensajeDeError(e));
+    }
   }
 
-  darDeAlta(f: Funcionario): void {
-    if (!confirm(`¿Dar de alta nuevamente a ${f.nombreCompleto}?`)) return;
-    this.limpiar();
-    this.api.estadoFuncionario(f.id, true).subscribe({
-      next: () => {
-        this.mensaje.set(`${f.nombreCompleto} fue dado de alta de nuevo. Conserva su usuario y contraseña; si no la recuerda, restablezca la clave.`);
-        this.cargar();
+  private campos(f?: Funcionario): CampoFormulario[] {
+    return [
+      { nombre: 'nombreCompleto', etiqueta: 'Nombre completo', requerido: true, maxlength: 150, valor: f?.nombreCompleto ?? '', columnas: 6 },
+      { nombre: 'cedula', etiqueta: 'Cédula', requerido: true, maxlength: 13, valor: f?.cedula ?? '', columnas: 3, patron: /^\d{10,13}$/, mensajePatron: 'ingrese entre 10 y 13 dígitos.' },
+      {
+        nombre: 'usuario', etiqueta: 'Usuario', requerido: true, maxlength: 50, valor: f?.usuario ?? '', columnas: 3, deshabilitado: !!f,
+        patron: /^[A-Za-z0-9._-]{4,50}$/, mensajePatron: 'de 4 a 50 caracteres: letras, números, punto, guion o guion bajo.',
+        ayuda: f ? 'No se puede cambiar.' : undefined,
       },
-      error: (e) => this.fallo(e),
-    });
-  }
-
-  restablecer(f: Funcionario): void {
-    if (!confirm(`¿Restablecer la clave de ${f.usuario}? Se generará una temporal nueva.`)) return;
-    this.limpiar();
-    this.api.restablecerPassword(f.usuario).subscribe({
-      next: (r) => this.entregable.set({ usuario: r.usuario, clave: r.passwordTemporal, correoEnviado: r.correoEnviado }),
-      error: (e) => this.fallo(e),
-    });
+      { nombre: 'correo', etiqueta: 'Correo', tipo: 'email', requerido: true, maxlength: 150, valor: f?.correo ?? '', columnas: 6 },
+      {
+        nombre: 'idEntidad', etiqueta: 'Entidad', tipo: 'select', requerido: true, columnas: 3, valor: f?.idEntidad ?? '',
+        opciones: [{ valor: '', texto: 'Seleccione...' }, ...this.entidades().map((e) => ({ valor: e.id, texto: `${e.codigo} - ${e.nombre}` }))],
+      },
+      { nombre: 'cargo', etiqueta: 'Cargo', maxlength: 100, valor: f?.cargo ?? '', columnas: 3 },
+    ];
   }
 
   private cargar(): void {
-    this.api.funcionarios().subscribe({ next: (f) => this.funcionarios.set(f), error: (e) => this.fallo(e) });
-  }
-
-  private terminarConError(e: unknown): void {
-    this.fallo(e);
-    this.guardando.set(false);
-  }
-
-  private limpiar(): void {
-    this.error.set('');
-    this.mensaje.set('');
-  }
-
-  private fallo(e: unknown): void {
-    this.error.set(mensajeDeError(e));
+    this.api.funcionarios().subscribe({
+      next: (f) => this.funcionarios.set(f),
+      error: (e) => this.errorCarga.set(mensajeDeError(e)),
+    });
   }
 }

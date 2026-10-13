@@ -629,7 +629,28 @@ class FlujoReportesIT {
                 .andExpect(jsonPath("$.items[?(@.idRegistro=='" + id + "')]").isNotEmpty());
         mvc.perform(get("/api/admin/auditoria").param("tabla", "USUARIO").param("accion", "UPDATE").param("usuario", "admin")
                         .header("Authorization", "Bearer " + admin))
-                .andExpect(jsonPath("$.items[?(@.origen=='SEGURIDAD')]").isNotEmpty());
+                .andExpect(jsonPath("$.items[?(@.origen=='SEGURIDAD')]").isNotEmpty())
+                .andExpect(jsonPath("$.items[?(@.descripcion=='Datos personales actualizados')]").isNotEmpty());
+        // y la fila de la designacion dice QUE paso (antes salia sin comentario)
+        mvc.perform(get("/api/admin/auditoria").param("tabla", "FUNCIONARIO").param("accion", "UPDATE").param("usuario", "admin")
+                        .header("Authorization", "Bearer " + admin))
+                .andExpect(jsonPath("$.items[?(@.idRegistro=='" + id + "')].descripcion").value(org.hamcrest.Matchers.hasItem("Funcionario cambiado de entidad")));
+    }
+
+    @Test
+    void todasLasFilasDeAuditoriaTienenUnComentarioQueExplicaQuePaso() throws Exception {
+        String admin = admin();
+        String usuario = "com" + UUID.randomUUID().toString().substring(0, 6);
+        int id = crearFuncionario(admin, usuario, 1);
+        json(patch("/api/admin/funcionarios/" + id + "/estado"), admin, "{\"activo\":false}").andExpect(status().isOk());
+        json(patch("/api/admin/funcionarios/" + id + "/estado"), admin, "{\"activo\":true}").andExpect(status().isOk());
+
+        String cuerpo = mvc.perform(get("/api/admin/auditoria").param("usuario", "admin").header("Authorization", "Bearer " + admin))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        java.util.List<String> sinComentario = JsonPath.read(cuerpo, "$.items[?(@.descripcion==null)].tabla");
+        assertTrue(sinComentario.isEmpty(), "filas de auditoria sin comentario: " + sinComentario);
+        java.util.List<String> comentarios = JsonPath.read(cuerpo, "$.items[?(@.tabla=='FUNCIONARIO' && @.idRegistro=='" + id + "')].descripcion");
+        assertTrue(comentarios.contains("Funcionario dado de baja") && comentarios.contains("Funcionario dado de alta"), comentarios.toString());
     }
 
     @Test

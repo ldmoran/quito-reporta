@@ -190,28 +190,31 @@ BEGIN
     IF TG_OP = 'INSERT' THEN
         INSERT INTO usuario_hist (operacion, usuario_accion, id_usuario, usuario, nombre_completo, correo, estado, bloqueado)
         VALUES ('INSERT', v_usuario, NEW.id_usuario, NEW.usuario, NEW.nombre_completo, NEW.correo, NEW.estado, NEW.bloqueado);
-        INSERT INTO auditoria (nombre_tabla, id_registro, accion, usuario_accion)
-        VALUES ('USUARIO', NEW.id_usuario, 'INSERT', v_usuario);
+        INSERT INTO auditoria (nombre_tabla, id_registro, accion, usuario_accion, descripcion)
+        VALUES ('USUARIO', NEW.id_usuario, 'INSERT', v_usuario, 'Usuario creado');
         RETURN NEW;
     ELSIF TG_OP = 'UPDATE' THEN
-        IF (NEW.nombre_completo, NEW.correo, NEW.estado, NEW.bloqueado, NEW.password_hash)
+        IF (NEW.nombre_completo, NEW.cedula, NEW.correo, NEW.estado, NEW.bloqueado, NEW.password_hash)
            IS DISTINCT FROM
-           (OLD.nombre_completo, OLD.correo, OLD.estado, OLD.bloqueado, OLD.password_hash) THEN
+           (OLD.nombre_completo, OLD.cedula, OLD.correo, OLD.estado, OLD.bloqueado, OLD.password_hash) THEN
             INSERT INTO usuario_hist (operacion, usuario_accion, id_usuario, usuario, nombre_completo, correo, estado, bloqueado)
             VALUES ('UPDATE', v_usuario, NEW.id_usuario, NEW.usuario, NEW.nombre_completo, NEW.correo, NEW.estado, NEW.bloqueado);
             INSERT INTO auditoria (nombre_tabla, id_registro, accion, usuario_accion, descripcion)
             VALUES ('USUARIO', NEW.id_usuario, 'UPDATE', v_usuario,
                     CASE WHEN NEW.bloqueado AND NOT OLD.bloqueado THEN 'Usuario bloqueado'
                          WHEN OLD.bloqueado AND NOT NEW.bloqueado THEN 'Usuario desbloqueado'
+                         WHEN NEW.estado <> OLD.estado THEN
+                              CASE WHEN NEW.estado = 'I' THEN 'Usuario dado de baja' ELSE 'Usuario dado de alta' END
                          WHEN NEW.password_hash <> OLD.password_hash THEN 'Cambio de contrasena'
+                         ELSE 'Datos personales actualizados'
                     END);
         END IF;
         RETURN NEW;
     ELSE
         INSERT INTO usuario_hist (operacion, usuario_accion, id_usuario, usuario, nombre_completo, correo, estado, bloqueado)
         VALUES ('DELETE', v_usuario, OLD.id_usuario, OLD.usuario, OLD.nombre_completo, OLD.correo, OLD.estado, OLD.bloqueado);
-        INSERT INTO auditoria (nombre_tabla, id_registro, accion, usuario_accion)
-        VALUES ('USUARIO', OLD.id_usuario, 'DELETE', v_usuario);
+        INSERT INTO auditoria (nombre_tabla, id_registro, accion, usuario_accion, descripcion)
+        VALUES ('USUARIO', OLD.id_usuario, 'DELETE', v_usuario, 'Usuario eliminado');
         RETURN OLD;
     END IF;
 END;
@@ -230,8 +233,9 @@ BEGIN
     IF TG_OP = 'DELETE' THEN r := OLD; ELSE r := NEW; END IF;
     INSERT INTO perfil_hist (operacion, usuario_accion, id_perfil, id_aplicacion, codigo, nombre, estado)
     VALUES (TG_OP, v_usuario, r.id_perfil, r.id_aplicacion, r.codigo, r.nombre, r.estado);
-    INSERT INTO auditoria (nombre_tabla, id_registro, accion, usuario_accion)
-    VALUES ('PERFIL', r.id_perfil, TG_OP, v_usuario);
+    INSERT INTO auditoria (nombre_tabla, id_registro, accion, usuario_accion, descripcion)
+    VALUES ('PERFIL', r.id_perfil, TG_OP,
+            v_usuario, CASE TG_OP WHEN 'INSERT' THEN 'Perfil creado' WHEN 'DELETE' THEN 'Perfil eliminado' ELSE 'Perfil actualizado' END);
     RETURN r;
 END;
 $$;
@@ -248,7 +252,8 @@ DECLARE
 BEGIN
     IF TG_OP = 'DELETE' THEN r := OLD; ELSE r := NEW; END IF;
     INSERT INTO auditoria (nombre_tabla, id_registro, accion, usuario_accion, descripcion)
-    VALUES ('USUARIO_PERFIL', r.id_usuario, TG_OP, fn_usuario_sesion(), 'Perfil ' || r.id_perfil);
+    VALUES ('USUARIO_PERFIL', r.id_usuario, TG_OP, fn_usuario_sesion(),
+            CASE TG_OP WHEN 'INSERT' THEN 'Perfil asignado: ' ELSE 'Perfil retirado: ' END || r.id_perfil);
     RETURN r;
 END;
 $$;

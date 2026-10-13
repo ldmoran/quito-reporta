@@ -41,6 +41,27 @@ cada perfil (`CIUDAD`, `FUNCIO`, `ADMINI`) se convierte en `ROLE_<código>`.
 
 ## Cómo correrlo
 
+### Comandos del día a día
+
+Todos se ejecutan **parados en la carpeta del proyecto** (donde están `docker-compose.yml` e `iniciar.bat`):
+`C:\Users\User\OneDrive\Desktop\8VO SEMESTRE\const_evo\Proyecto\AlertaQuito`.
+Para abrir una consola ahí: en el Explorador de archivos entre a esa carpeta, escriba `cmd` o `powershell` en la barra de
+direcciones y pulse Enter.
+
+| Quiero... | Doble clic en... | O por consola |
+|---|---|---|
+| **Encender** el sistema (abre Docker Desktop si hace falta y el navegador) | `iniciar.bat` | `docker compose up -d --build --wait` |
+| **Apagarlo** conservando los datos | `detener.bat` | `docker compose stop` |
+| **Borrar los datos** y dejar las bases como nuevas | `reiniciar-bases.bat` | `python scripts/reiniciar_bases.py` |
+| Ver si todo funciona de punta a punta | | `python scripts/prueba_humo.py` |
+| Ver los mensajes del servicio (si algo falla) | | `docker compose logs servicio` |
+| Ver qué está corriendo | | `docker compose ps` |
+| Apagar **y borrar** contenedores y discos | | `docker compose down -v` |
+
+La primera vez `iniciar.bat` tarda varios minutos (compila todo); las siguientes son rápidas. Docker Desktop debe estar
+instalado. Cuando termina, la aplicación queda en http://localhost:4200.
+
+
 ### Opción A — Docker (recomendada)
 
 ```bash
@@ -89,6 +110,9 @@ cierre la sesión (*Salir*) del navegador: los usuarios se volvieron a crear.
 3. Interfaz: `cd alerta-quito-interfaz && npm install && npm start` (el proxy envía `/api` al puerto 8080).
 
 ## Diseño y marca
+
+Las ventanas emergentes (formularios de alta y edición, confirmaciones, avisos y el detalle de auditoría) usan **SweetAlert2**
+(`core/alertas.service.ts`) en lugar de los cuadros del navegador.
 
 La interfaz sigue el lenguaje visual del SGFDM: Bootstrap 5, íconos Font Awesome 4.7, fuente Cabin, cabecera azul,
 menú lateral blanco y un login con imágenes de fondo y panel curvo.

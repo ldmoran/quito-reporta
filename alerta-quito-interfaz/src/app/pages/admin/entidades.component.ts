@@ -1,6 +1,8 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { AlertasService, CampoFormulario } from '../../core/alertas.service';
 import { mensajeDeError } from '../../core/mensajes';
 import { EntidadAdmin } from '../../core/modelos';
 
@@ -10,7 +12,7 @@ type FiltroEstado = 'TODOS' | 'A' | 'I';
 @Component({
   selector: 'app-entidades',
   standalone: true,
-  imports: [FormsModule, ReactiveFormsModule],
+  imports: [FormsModule],
   template: `
     <div class="dashboard-section">
       <div class="section-heading">
@@ -18,47 +20,13 @@ type FiltroEstado = 'TODOS' | 'A' | 'I';
           <h4>Entidades</h4>
           <p>Instituciones que reciben y atienden los reportes. Nada se borra: se desactivan y se pueden reactivar.</p>
         </div>
-        @if (!formAbierto()) {
-          <button type="button" class="btn btn-primary btn-sm" (click)="abrirNueva()">
-            <i class="fa fa-plus-circle me-1" aria-hidden="true"></i> Nueva entidad
-          </button>
-        }
+        <button type="button" class="btn btn-primary btn-sm" (click)="nueva()">
+          <i class="fa fa-plus-circle me-1" aria-hidden="true"></i> Nueva entidad
+        </button>
       </div>
 
-      @if (mensaje()) {
-        <div class="alert alert-success py-2" role="status">{{ mensaje() }}</div>
-      }
-      @if (error()) {
-        <div class="alert alert-danger py-2" role="alert">{{ error() }}</div>
-      }
-
-      @if (formAbierto()) {
-        <div class="panel-formulario">
-          <h4 class="subtitulo mt-0">{{ editandoId() ? 'Editar entidad' : 'Nueva entidad' }}</h4>
-          <form [formGroup]="form" (ngSubmit)="guardar()" novalidate>
-            <div class="row g-3">
-              <div class="col-md-3">
-                <label class="form-label" for="e-codigo">Código</label>
-                <input id="e-codigo" class="form-control text-uppercase" formControlName="codigo" maxlength="10" placeholder="EPMMOP" />
-                <div class="form-text">2 a 10 letras, números o guion bajo.</div>
-              </div>
-              <div class="col-md-9">
-                <label class="form-label" for="e-nombre">Nombre</label>
-                <input id="e-nombre" class="form-control" formControlName="nombre" maxlength="150" />
-              </div>
-              <div class="col-12">
-                <label class="form-label" for="e-descripcion">Descripción (opcional)</label>
-                <input id="e-descripcion" class="form-control" formControlName="descripcion" maxlength="300" placeholder="Calles, señalización y semáforos" />
-              </div>
-            </div>
-            <div class="mt-3 d-flex gap-2">
-              <button class="btn btn-primary" type="submit" [disabled]="form.invalid || guardando()">
-                <i class="fa fa-save me-2" aria-hidden="true"></i>{{ guardando() ? 'Guardando...' : 'Guardar' }}
-              </button>
-              <button class="btn btn-secondary" type="button" (click)="cerrarForm()">Cancelar</button>
-            </div>
-          </form>
-        </div>
+      @if (errorCarga()) {
+        <div class="alert alert-danger" role="alert">{{ errorCarga() }}</div>
       }
 
       <div class="row g-2 mb-3 align-items-end">
@@ -126,16 +94,12 @@ type FiltroEstado = 'TODOS' | 'A' | 'I';
 })
 export class EntidadesComponent implements OnInit {
   private readonly api = inject(ApiService);
-  private readonly fb = inject(FormBuilder);
+  private readonly alertas = inject(AlertasService);
 
   readonly entidades = signal<EntidadAdmin[]>([]);
   readonly busqueda = signal('');
   readonly estado = signal<FiltroEstado>('TODOS');
-  readonly formAbierto = signal(false);
-  readonly editandoId = signal<number | null>(null);
-  readonly guardando = signal(false);
-  readonly error = signal('');
-  readonly mensaje = signal('');
+  readonly errorCarga = signal('');
 
   readonly visibles = computed(() => {
     const texto = this.busqueda().trim().toLowerCase();
@@ -145,76 +109,66 @@ export class EntidadesComponent implements OnInit {
     });
   });
 
-  readonly form = this.fb.nonNullable.group({
-    codigo: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(10), Validators.pattern(/^[A-Za-z0-9_]+$/)]],
-    nombre: ['', [Validators.required, Validators.maxLength(150)]],
-    descripcion: ['', Validators.maxLength(300)],
-  });
-
   ngOnInit(): void {
     this.cargar();
   }
 
-  abrirNueva(): void {
-    this.limpiar();
-    this.editandoId.set(null);
-    this.form.reset({ codigo: '', nombre: '', descripcion: '' });
-    this.formAbierto.set(true);
-  }
-
-  editar(e: EntidadAdmin): void {
-    this.limpiar();
-    this.editandoId.set(e.id);
-    this.form.reset({ codigo: e.codigo, nombre: e.nombre, descripcion: e.descripcion ?? '' });
-    this.formAbierto.set(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  cerrarForm(): void {
-    this.formAbierto.set(false);
-    this.editandoId.set(null);
-  }
-
-  guardar(): void {
-    if (this.form.invalid) return;
-    this.guardando.set(true);
-    this.limpiar();
-    const datos = this.form.getRawValue();
-    const id = this.editandoId();
-    const llamada = id === null ? this.api.crearEntidad(datos) : this.api.actualizarEntidad(id, datos);
-    llamada.subscribe({
-      next: (e) => {
-        this.mensaje.set(id === null ? `La entidad ${e.codigo} fue creada.` : `La entidad ${e.codigo} fue actualizada.`);
-        this.cerrarForm();
-        this.guardando.set(false);
-        this.cargar();
-      },
-      error: (err) => {
-        this.error.set(mensajeDeError(err));
-        this.guardando.set(false);
-      },
+  async nueva(): Promise<void> {
+    const e = await this.alertas.formulario({
+      titulo: 'Nueva entidad',
+      confirmar: 'Crear entidad',
+      campos: this.campos(),
+      mensajeDeError,
+      guardar: (v) => firstValueFrom(this.api.crearEntidad({ codigo: String(v['codigo']), nombre: String(v['nombre']), descripcion: String(v['descripcion']) })),
     });
+    if (!e) return;
+    this.alertas.exito(`La entidad ${e.codigo} fue creada.`);
+    this.cargar();
   }
 
-  cambiarEstado(e: EntidadAdmin, activo: boolean): void {
-    const accion = activo ? 'activar' : 'desactivar';
-    if (!confirm(`¿Desea ${accion} la entidad ${e.codigo}?`)) return;
-    this.limpiar();
-    this.api.estadoEntidad(e.id, activo).subscribe({
-      next: () => {
-        this.mensaje.set(`La entidad ${e.codigo} fue ${activo ? 'activada' : 'desactivada'}.`);
-        this.cargar();
-      },
-      error: (err) => this.error.set(mensajeDeError(err)),
+  async editar(entidad: EntidadAdmin): Promise<void> {
+    const e = await this.alertas.formulario({
+      titulo: `Editar entidad ${entidad.codigo}`,
+      confirmar: 'Guardar cambios',
+      campos: this.campos(entidad),
+      mensajeDeError,
+      guardar: (v) =>
+        firstValueFrom(this.api.actualizarEntidad(entidad.id, { codigo: String(v['codigo']), nombre: String(v['nombre']), descripcion: String(v['descripcion']) })),
     });
+    if (!e) return;
+    this.alertas.exito(`La entidad ${e.codigo} fue actualizada.`);
+    this.cargar();
+  }
+
+  async cambiarEstado(e: EntidadAdmin, activo: boolean): Promise<void> {
+    const ok = await this.alertas.confirmar({
+      titulo: `¿${activo ? 'Activar' : 'Desactivar'} la entidad ${e.codigo}?`,
+      texto: activo ? undefined : 'Dejará de poder recibir reportes. Los reportes ya recibidos no cambian.',
+      boton: activo ? 'Sí, activar' : 'Sí, desactivar',
+      peligro: !activo,
+    });
+    if (!ok) return;
+    try {
+      await firstValueFrom(this.api.estadoEntidad(e.id, activo));
+      this.alertas.exito(`La entidad ${e.codigo} fue ${activo ? 'activada' : 'desactivada'}.`);
+      this.cargar();
+    } catch (err) {
+      await this.alertas.error(mensajeDeError(err));
+    }
+  }
+
+  private campos(e?: EntidadAdmin): CampoFormulario[] {
+    return [
+      {
+        nombre: 'codigo', etiqueta: 'Código', requerido: true, maxlength: 10, valor: e?.codigo ?? '', columnas: 4, mayusculas: true,
+        patron: /^[A-Za-z0-9_]{2,10}$/, mensajePatron: 'de 2 a 10 letras, números o guion bajo.', placeholder: 'EPMMOP',
+      },
+      { nombre: 'nombre', etiqueta: 'Nombre', requerido: true, maxlength: 150, valor: e?.nombre ?? '', columnas: 8 },
+      { nombre: 'descripcion', etiqueta: 'Descripción (opcional)', tipo: 'area', maxlength: 300, valor: e?.descripcion ?? '', placeholder: 'Calles, señalización y semáforos' },
+    ];
   }
 
   private cargar(): void {
-    this.api.entidadesAdmin().subscribe({ next: (e) => this.entidades.set(e), error: (err) => this.error.set(mensajeDeError(err)) });
-  }
-
-  private limpiar(): void {
-    this.error.set('');
-    this.mensaje.set('');
+    this.api.entidadesAdmin().subscribe({ next: (e) => this.entidades.set(e), error: (err) => this.errorCarga.set(mensajeDeError(err)) });
   }
 }

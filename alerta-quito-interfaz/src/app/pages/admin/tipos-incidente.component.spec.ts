@@ -2,23 +2,27 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { AlertasService } from '../../core/alertas.service';
+import { AlertasFalso } from '../../testing/alertas-falso';
 import { TipoIncidenteAdmin } from '../../core/modelos';
-import { TiposIncidenteComponent } from './tipos-incidente.component';
+import { TiposIncidenteComponent, alCambiarEmergencia } from './tipos-incidente.component';
 
 const tipo = (extra: Partial<TipoIncidenteAdmin> = {}): TipoIncidenteAdmin => ({
   id: 1, nombre: 'Bache', idEntidad: 1, entidadCodigo: 'EPMMOP', entidadNombre: 'EPMMOP', prioridadBase: 3, esEmergencia: false,
   estado: 'A', reportes: 0, ...extra,
 });
 
-describe('TiposIncidenteComponent (mantenimiento)', () => {
+describe('TiposIncidenteComponent (mantenimiento con ventanas emergentes)', () => {
   let fixture: ComponentFixture<TiposIncidenteComponent>;
   let c: TiposIncidenteComponent;
   let http: HttpTestingController;
+  let alertas: AlertasFalso;
 
   beforeEach(async () => {
+    alertas = new AlertasFalso();
     await TestBed.configureTestingModule({
       imports: [TiposIncidenteComponent],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: AlertasService, useValue: alertas }],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(TiposIncidenteComponent);
@@ -30,56 +34,86 @@ describe('TiposIncidenteComponent (mantenimiento)', () => {
       { id: 2, codigo: 'OLD', nombre: 'Vieja', descripcion: null, estado: 'I', tiposActivos: 0, funcionariosActivos: 0 },
     ]);
     fixture.detectChanges();
-    spyOn(window, 'confirm').and.returnValue(true);
   });
 
   afterEach(() => http.verify());
 
-  it('solo ofrece entidades activas para asignar el tipo', () => {
-    expect(c.entidadesActivas().map((e) => e.codigo)).toEqual(['EPMMOP']);
+  const recarga = () => {
+    http.expectOne('/api/admin/mantenimiento/tipos-incidente').flush([]);
+    http.expectOne('/api/admin/mantenimiento/entidades').flush([]);
+  };
+
+  it('el formulario solo ofrece entidades activas', async () => {
+    alertas.valores = null;
+    await c.nuevo();
+
+    const opciones = alertas.ultimoFormulario!.campos.find((x) => x.nombre === 'idEntidad')!.opciones!;
+    expect(opciones.map((o) => o.texto)).toEqual(['Seleccione...', 'EPMMOP - EPMMOP']);
   });
 
-  it('marcar emergencia fuerza la prioridad 1', () => {
-    c.abrirNuevo();
-    c.form.patchValue({ prioridadBase: 4 });
-    c.form.controls.esEmergencia.setValue(true);
-    c.alCambiarEmergencia();
+  it('marcar emergencia fuerza la prioridad 1 (y desmarcarla no la cambia)', () => {
+    const asignar = jasmine.createSpy('asignar');
 
-    expect(c.form.getRawValue().prioridadBase).toBe(1);
+    alCambiarEmergencia('esEmergencia', { esEmergencia: true, prioridadBase: 4 }, asignar);
+    expect(asignar).toHaveBeenCalledWith('prioridadBase', 1);
+
+    asignar.calls.reset();
+    alCambiarEmergencia('esEmergencia', { esEmergencia: false }, asignar);
+    alCambiarEmergencia('nombre', { esEmergencia: true }, asignar);
+    expect(asignar).not.toHaveBeenCalled();
   });
 
-  it('crea un tipo con POST', () => {
-    c.abrirNuevo();
-    c.form.setValue({ nombre: 'Inundación', idEntidad: 1, prioridadBase: 2, esEmergencia: false });
-    c.guardar();
+  it('crea un tipo con POST', async () => {
+    alertas.valores = { nombre: 'Inundación', idEntidad: 1, prioridadBase: 2, esEmergencia: false };
+    const accion = c.nuevo();
 
     const req = http.expectOne('/api/admin/mantenimiento/tipos-incidente');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ nombre: 'Inundación', idEntidad: 1, prioridadBase: 2, esEmergencia: false });
     req.flush(tipo({ id: 9, nombre: 'Inundación' }));
-    http.expectOne('/api/admin/mantenimiento/tipos-incidente').flush([]);
-    http.expectOne('/api/admin/mantenimiento/entidades').flush([]);
-    expect(c.mensaje()).toContain('Inundación');
+    await accion;
+    recarga();
+
+    expect(alertas.exito).toHaveBeenCalledWith('El tipo "Inundación" fue creado.');
   });
 
-  it('si el tipo ya tiene reportes no deja cambiarlo de entidad', () => {
-    c.editar(tipo({ id: 2, reportes: 4 }));
-    expect(c.bloqueaEntidad()).toBeTrue();
-    expect(c.form.controls.idEntidad.disabled).toBeTrue();
+  it('si el tipo ya tiene reportes la entidad queda bloqueada y se conserva la original', async () => {
+    alertas.valores = { nombre: 'Robo', idEntidad: 99, prioridadBase: 1, esEmergencia: true };
+    const accion = c.editar(tipo({ id: 2, nombre: 'Robo', reportes: 4 }));
 
-    c.editar(tipo({ reportes: 0 }));
-    expect(c.bloqueaEntidad()).toBeFalse();
-    expect(c.form.controls.idEntidad.enabled).toBeTrue();
+    const campo = alertas.ultimoFormulario!.campos.find((x) => x.nombre === 'idEntidad')!;
+    expect(campo.deshabilitado).toBeTrue();
+    expect(campo.ayuda).toContain('Ya tiene reportes');
+
+    const req = http.expectOne('/api/admin/mantenimiento/tipos-incidente/2');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body.idEntidad).toBe(1);   // no el 99 del formulario
+    req.flush(tipo({ id: 2 }));
+    await accion;
+    recarga();
   });
 
-  it('desactivar un tipo usa PATCH y refresca', () => {
-    c.cambiarEstado(tipo(), false);
+  it('un tipo sin reportes sí permite cambiar de entidad', async () => {
+    alertas.valores = null;
+    await c.editar(tipo({ reportes: 0 }));
+
+    expect(alertas.ultimoFormulario!.campos.find((x) => x.nombre === 'idEntidad')!.deshabilitado).toBeFalse();
+  });
+
+  it('desactivar un tipo pide confirmación de peligro y usa PATCH', async () => {
+    const accion = c.cambiarEstado(tipo(), false);
+    await Promise.resolve();
+
+    expect(alertas.confirmar.calls.mostRecent().args[0].peligro).toBeTrue();
     const req = http.expectOne('/api/admin/mantenimiento/tipos-incidente/1/estado');
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({ activo: false });
     req.flush(tipo({ estado: 'I' }));
-    http.expectOne('/api/admin/mantenimiento/tipos-incidente').flush([]);
-    http.expectOne('/api/admin/mantenimiento/entidades').flush([]);
+    await Promise.resolve();
+    await accion;
+    recarga();
+
+    expect(alertas.exito).toHaveBeenCalledWith('El tipo "Bache" fue desactivado.');
   });
 
   it('filtra por entidad, estado y texto', () => {

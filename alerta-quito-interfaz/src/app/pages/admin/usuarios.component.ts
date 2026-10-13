@@ -1,19 +1,14 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { AlertasService } from '../../core/alertas.service';
 import { mensajeDeError } from '../../core/mensajes';
-import { CredencialTemporalComponent } from '../../shared/credencial-temporal.component';
-
-interface Entregable {
-  usuario: string;
-  clave: string;
-  correoEnviado: boolean;
-}
 
 @Component({
   selector: 'app-usuarios',
   standalone: true,
-  imports: [ReactiveFormsModule, CredencialTemporalComponent],
+  imports: [ReactiveFormsModule],
   template: `
     <div class="dashboard-section">
       <div class="section-heading">
@@ -22,16 +17,6 @@ interface Entregable {
           <p>Desbloqueo de cuentas y restablecimiento de contraseñas (ciudadanos, funcionarios y administradores).</p>
         </div>
       </div>
-
-      @if (mensaje()) {
-        <div class="alert alert-success py-2" role="status">{{ mensaje() }}</div>
-      }
-      @if (error()) {
-        <div class="alert alert-danger py-2" role="alert">{{ error() }}</div>
-      }
-      @if (entregable(); as c) {
-        <app-credencial-temporal [usuario]="c.usuario" [clave]="c.clave" [correoEnviado]="c.correoEnviado" (cerrar)="entregable.set(null)" />
-      }
 
       <p class="text-muted">
         Un usuario se bloquea tras 3 intentos fallidos de ingreso. Quien olvida su contraseña puede recuperarla solo desde el
@@ -59,35 +44,35 @@ interface Entregable {
 export class UsuariosComponent {
   private readonly api = inject(ApiService);
   private readonly fb = inject(FormBuilder);
+  private readonly alertas = inject(AlertasService);
 
   readonly form = this.fb.nonNullable.group({ usuario: ['', Validators.required] });
-  readonly entregable = signal<Entregable | null>(null);
-  readonly error = signal('');
-  readonly mensaje = signal('');
 
-  desbloquear(): void {
+  async desbloquear(): Promise<void> {
     if (this.form.invalid) return;
     const usuario = this.form.getRawValue().usuario.trim();
-    this.limpiar();
-    this.api.desbloquearUsuario(usuario).subscribe({
-      next: () => this.mensaje.set(`${usuario} fue desbloqueado.`),
-      error: (e) => this.error.set(mensajeDeError(e)),
-    });
+    try {
+      await firstValueFrom(this.api.desbloquearUsuario(usuario));
+      this.alertas.exito(`${usuario} fue desbloqueado.`);
+    } catch (e) {
+      await this.alertas.error(mensajeDeError(e));
+    }
   }
 
-  restablecer(): void {
+  async restablecer(): Promise<void> {
     if (this.form.invalid) return;
     const usuario = this.form.getRawValue().usuario.trim();
-    if (!confirm(`¿Restablecer la clave de ${usuario}? Se generará una temporal nueva.`)) return;
-    this.limpiar();
-    this.api.restablecerPassword(usuario).subscribe({
-      next: (r) => this.entregable.set({ usuario: r.usuario, clave: r.passwordTemporal, correoEnviado: r.correoEnviado }),
-      error: (e) => this.error.set(mensajeDeError(e)),
+    const ok = await this.alertas.confirmar({
+      titulo: `¿Restablecer la clave de ${usuario}?`,
+      texto: 'Se generará una contraseña temporal nueva y deberá cambiarla al ingresar.',
+      boton: 'Sí, restablecer',
     });
-  }
-
-  private limpiar(): void {
-    this.error.set('');
-    this.mensaje.set('');
+    if (!ok) return;
+    try {
+      const r = await firstValueFrom(this.api.restablecerPassword(usuario));
+      await this.alertas.credencial({ usuario: r.usuario, clave: r.passwordTemporal, correoEnviado: r.correoEnviado });
+    } catch (e) {
+      await this.alertas.error(mensajeDeError(e));
+    }
   }
 }

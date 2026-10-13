@@ -857,3 +857,72 @@ button.sidebar-link {
 .accion-INSERT { background: #e1f3e3; border-color: #96cc9c; color: #1b5e20; }
 .accion-UPDATE { background: #fff3d6; border-color: #ecc66d; color: #7a5200; }
 .accion-DELETE { background: #fde4e2; border-color: #e99a95; color: #8e1b14; }
+
+/* ---------- ventanas emergentes (SweetAlert2) ---------- */
+.swal2-container {
+  z-index: 2000;               /* por encima de la cabecera (1200) y del menu movil (1100) */
+  font-family: var(--bs-font-sans-serif);
+}
+.swal2-popup {
+  border-radius: 16px;
+  font-family: var(--bs-font-sans-serif);
+}
+.swal2-title {
+  color: var(--aq-titulo);
+  font-weight: 700;
+  font-size: 1.35rem;
+}
+.swal2-styled.swal2-confirm,
+.swal2-styled.swal2-cancel {
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.swal2-validation-message {
+  background: #fdecea;
+  color: #8e1b14;
+  font-weight: 600;
+}
+.aq-formulario .form-label {
+  font-weight: 600;
+  font-size: 0.88rem;
+  margin-bottom: 4px;
+}
+.aq-formulario .form-text {
+  font-size: 0.78rem;
+}
+.aq-clave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.aq-clave code {
+  font-size: 1.35rem;
+  letter-spacing: 1px;
+  color: var(--bs-dark);
+  background: #f4f8fb;
+  border: 1px solid var(--aq-borde);
+  padding: 4px 12px;
+  border-radius: 8px;
+}
+.aq-detalle {
+  max-height: 60vh;
+  overflow: auto;
+}
+.aq-detalle td.cambio {
+  background: #fff3cd;
+  font-weight: 600;
+}
+.aq-detalle table th {
+  background: var(--aq-cabecera);
+  color: #ffffff;
+  white-space: nowrap;
+}
+@media (max-width: 768px) {
+  .swal2-popup {
+    width: 94vw !important;
+    padding: 1rem;
+  }
+}

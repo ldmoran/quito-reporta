@@ -358,12 +358,17 @@ LANGUAGE plpgsql AS $$
 DECLARE
     v_usuario VARCHAR := fn_usuario_sesion();
     r         entidad%ROWTYPE;
+    v_desc    VARCHAR;
 BEGIN
     IF TG_OP = 'DELETE' THEN r := OLD; ELSE r := NEW; END IF;
+    v_desc := CASE TG_OP WHEN 'INSERT' THEN 'Entidad creada' WHEN 'DELETE' THEN 'Entidad eliminada'
+                         ELSE CASE WHEN NEW.estado <> OLD.estado THEN
+                                   CASE WHEN NEW.estado = 'I' THEN 'Entidad desactivada' ELSE 'Entidad activada' END
+                              ELSE 'Datos de la entidad actualizados' END END;
     INSERT INTO entidad_hist (operacion, usuario_accion, id_entidad, codigo, nombre, descripcion, estado)
     VALUES (TG_OP, v_usuario, r.id_entidad, r.codigo, r.nombre, r.descripcion, r.estado);
-    INSERT INTO auditoria (nombre_tabla, id_registro, accion, usuario_accion)
-    VALUES ('ENTIDAD', r.id_entidad, TG_OP, v_usuario);
+    INSERT INTO auditoria (nombre_tabla, id_registro, accion, usuario_accion, descripcion)
+    VALUES ('ENTIDAD', r.id_entidad, TG_OP, v_usuario, v_desc);
     RETURN r;
 END;
 $$;
@@ -377,12 +382,17 @@ LANGUAGE plpgsql AS $$
 DECLARE
     v_usuario VARCHAR := fn_usuario_sesion();
     r         tipo_incidente%ROWTYPE;
+    v_desc    VARCHAR;
 BEGIN
     IF TG_OP = 'DELETE' THEN r := OLD; ELSE r := NEW; END IF;
+    v_desc := CASE TG_OP WHEN 'INSERT' THEN 'Tipo de incidente creado' WHEN 'DELETE' THEN 'Tipo de incidente eliminado'
+                         ELSE CASE WHEN NEW.estado <> OLD.estado THEN
+                                   CASE WHEN NEW.estado = 'I' THEN 'Tipo de incidente desactivado' ELSE 'Tipo de incidente activado' END
+                              ELSE 'Datos del tipo de incidente actualizados' END END;
     INSERT INTO tipo_incidente_hist (operacion, usuario_accion, id_tipo_incidente, id_entidad, nombre, prioridad_base, es_emergencia, estado)
     VALUES (TG_OP, v_usuario, r.id_tipo_incidente, r.id_entidad, r.nombre, r.prioridad_base, r.es_emergencia, r.estado);
-    INSERT INTO auditoria (nombre_tabla, id_registro, accion, usuario_accion)
-    VALUES ('TIPO_INCIDENTE', r.id_tipo_incidente, TG_OP, v_usuario);
+    INSERT INTO auditoria (nombre_tabla, id_registro, accion, usuario_accion, descripcion)
+    VALUES ('TIPO_INCIDENTE', r.id_tipo_incidente, TG_OP, v_usuario, v_desc);
     RETURN r;
 END;
 $$;
@@ -396,12 +406,18 @@ LANGUAGE plpgsql AS $$
 DECLARE
     v_usuario VARCHAR := fn_usuario_sesion();
     r         funcionario%ROWTYPE;
+    v_desc    VARCHAR;
 BEGIN
     IF TG_OP = 'DELETE' THEN r := OLD; ELSE r := NEW; END IF;
+    v_desc := CASE TG_OP WHEN 'INSERT' THEN 'Funcionario designado' WHEN 'DELETE' THEN 'Funcionario eliminado'
+                         ELSE CASE WHEN NEW.estado <> OLD.estado THEN
+                                   CASE WHEN NEW.estado = 'I' THEN 'Funcionario dado de baja' ELSE 'Funcionario dado de alta' END
+                              WHEN NEW.id_entidad <> OLD.id_entidad THEN 'Funcionario cambiado de entidad'
+                              ELSE 'Datos del funcionario actualizados' END END;
     INSERT INTO funcionario_hist (operacion, usuario_accion, id_funcionario, id_usuario, id_entidad, cargo, estado)
     VALUES (TG_OP, v_usuario, r.id_funcionario, r.id_usuario, r.id_entidad, r.cargo, r.estado);
-    INSERT INTO auditoria (nombre_tabla, id_registro, accion, usuario_accion)
-    VALUES ('FUNCIONARIO', r.id_funcionario, TG_OP, v_usuario);
+    INSERT INTO auditoria (nombre_tabla, id_registro, accion, usuario_accion, descripcion)
+    VALUES ('FUNCIONARIO', r.id_funcionario, TG_OP, v_usuario, v_desc);
     RETURN r;
 END;
 $$;

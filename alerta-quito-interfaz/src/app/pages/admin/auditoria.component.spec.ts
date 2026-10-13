@@ -2,11 +2,13 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { AlertasService } from '../../core/alertas.service';
+import { AlertasFalso } from '../../testing/alertas-falso';
 import { FilaAuditoria, PaginaAuditoria } from '../../core/modelos';
 import { AuditoriaComponent } from './auditoria.component';
 
 const fila = (extra: Partial<FilaAuditoria> = {}): FilaAuditoria => ({
-  origen: 'NEGOCIO', id: 10, tabla: 'ENTIDAD', idRegistro: '3', accion: 'UPDATE', usuario: 'admin', fecha: '2026-10-12T10:00:00', descripcion: null, ...extra,
+  origen: 'NEGOCIO', id: 10, tabla: 'ENTIDAD', idRegistro: '3', accion: 'UPDATE', usuario: 'admin', fecha: '2026-10-12T10:00:00', descripcion: 'Datos de la entidad actualizados', ...extra,
 });
 const pagina = (items: FilaAuditoria[], extra: Partial<PaginaAuditoria> = {}): PaginaAuditoria => ({
   items, pagina: 0, totalPaginas: 1, total: items.length, tablas: ['ENTIDAD', 'USUARIO'], ...extra,
@@ -16,11 +18,13 @@ describe('AuditoriaComponent', () => {
   let fixture: ComponentFixture<AuditoriaComponent>;
   let c: AuditoriaComponent;
   let http: HttpTestingController;
+  let alertas: AlertasFalso;
 
   beforeEach(async () => {
+    alertas = new AlertasFalso();
     await TestBed.configureTestingModule({
       imports: [AuditoriaComponent],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: AlertasService, useValue: alertas }],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(AuditoriaComponent);
@@ -32,14 +36,16 @@ describe('AuditoriaComponent', () => {
 
   const cargaInicial = (p: PaginaAuditoria) => http.expectOne((r) => r.url === '/api/admin/auditoria').flush(p);
 
-  it('carga los últimos movimientos y alimenta el filtro de tablas', () => {
-    cargaInicial(pagina([fila(), fila({ id: 11, origen: 'SEGURIDAD', tabla: 'USUARIO', accion: 'INSERT', idRegistro: '5' })]));
+  it('carga los últimos movimientos con su comentario y alimenta el filtro de tablas', () => {
+    cargaInicial(pagina([fila(), fila({ id: 11, origen: 'SEGURIDAD', tabla: 'USUARIO', accion: 'INSERT', idRegistro: '5', descripcion: 'Usuario creado' })]));
     fixture.detectChanges();
 
+    const texto = fixture.nativeElement.textContent as string;
     expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(2);
     expect(c.tablas()).toEqual(['ENTIDAD', 'USUARIO']);
-    expect(fixture.nativeElement.textContent).toContain('Edición');
-    expect(fixture.nativeElement.textContent).toContain('Creación');
+    expect(texto).toContain('Edición');
+    expect(texto).toContain('Creación');
+    expect(texto).toContain('Usuario creado');
   });
 
   it('envía los filtros al servidor y vuelve a la primera página', () => {
@@ -76,9 +82,9 @@ describe('AuditoriaComponent', () => {
     cargaInicial(pagina([]));
   });
 
-  it('Ver cambios trae el historial y resalta lo que cambió entre versiones', () => {
+  it('Ver cambios abre una ventana con las versiones y lo que cambió resaltado', async () => {
     cargaInicial(pagina([fila()]));
-    c.verCambios(fila());
+    const accion = c.verCambios(fila());
 
     const req = http.expectOne((r) => r.url === '/api/admin/auditoria/historial');
     expect(req.request.params.get('origen')).toBe('NEGOCIO');
@@ -88,23 +94,22 @@ describe('AuditoriaComponent', () => {
       { id_hist: 1, operacion: 'INSERT', usuario_accion: 'admin', fecha_accion: '2026-10-12T09:00:00', id_entidad: 3, nombre: 'Antes', estado: 'A' },
       { id_hist: 2, operacion: 'UPDATE', usuario_accion: 'admin', fecha_accion: '2026-10-12T10:00:00', id_entidad: 3, nombre: 'Despues', estado: 'A' },
     ]);
-    fixture.detectChanges();
+    await accion;
 
-    const vista = c.historial()!;
-    expect(vista.columnas).toEqual(['id_entidad', 'nombre', 'estado']);
-    expect(vista.filas[0].cambiados.size).toBe(0);
-    expect([...vista.filas[1].cambiados]).toEqual(['nombre']);
-    expect(fixture.nativeElement.querySelector('td.cambio').textContent).toContain('Despues');
+    const opciones = alertas.detalle.calls.mostRecent().args[0];
+    expect(opciones.titulo).toBe('Cambios de ENTIDAD #3');
+    expect(opciones.html).toContain('<td class="cambio">Despues</td>');
+    expect(opciones.html).toContain('<td>Antes</td>');
+    expect(opciones.html).not.toContain('<td class="cambio">Antes</td>');
   });
 
-  it('un segundo clic oculta el detalle', () => {
+  it('si falla traer el historial muestra una ventana de error', async () => {
     cargaInicial(pagina([fila()]));
-    c.verCambios(fila());
-    http.expectOne((r) => r.url.endsWith('/historial')).flush([]);
-    expect(c.abierto()).not.toBeNull();
+    const accion = c.verCambios(fila());
+    http.expectOne((r) => r.url.endsWith('/historial')).flush({ mensaje: 'Esa tabla no tiene historial de cambios.' }, { status: 400, statusText: 'Bad Request' });
+    await accion;
 
-    c.verCambios(fila());
-    expect(c.abierto()).toBeNull();
+    expect(alertas.error).toHaveBeenCalledWith('Esa tabla no tiene historial de cambios.');
   });
 
   it('muestra la paginación solo cuando hay más de una página', () => {
